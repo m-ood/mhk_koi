@@ -1,5 +1,5 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"1", "url":"https://raw.githubusercontent.com/idgafmood/mhk_template/main/mloop.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"2", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
@@ -177,6 +177,10 @@ intel() {
                                 ," ontop: create copy of window with special ontop properties"
                                 ,"`r`n"
                                 ," screenShot, ss: uses windows snip&sketch uwp for screenshotting"
+                                ,"`r`n"
+                                ," anime: simple anime scraper (ignores string syntax)"
+                                ,"   | anime big anime name"
+                                ,"   | anime"
                                 ,""]
             ;]
             ;[ credits panel
@@ -927,57 +931,113 @@ intel() {
                 __select(full) {
                     static
                     static 选择, 选择hwnd
-                    local name, co, payload, response, results, i, temp, counter, w, final, c, tabCounter, tab, buttonText, fn, a, b
+                    local name, co, payload, response, results, i, temp, counter, w, final, c, tabCounter, tab, buttonText, fn, a, b, animeList, watched, episodesWatched, episodesWatchedTemp, z, isDub, l
+                    counter:=0
                     if (winexist("ahk_id " 选择hwnd))
                         return "selection already open"
-                    ;/search
-                        name:=_.filter(full,"/\ /is=-")
-                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
-                        payload:="https://api.consumet.org/anime/gogoanime/" . (name) . "?page=0"
-                        co.open("GET",payload)
-                        co.send()
-                        response:=_.json.load(co.responseText)
-                        if (response.results.count()<=0)
-                            return "anime not found"
-                    ;/search gui
-                        w:=0
-                        while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
-                            (%temp%):=""
-
-                        gui, % "选择:destroy"
-                        gui, % "选择:+hwnd选择hwnd +LastFound"
-                        gui, % "选择:color", % "0x11111b",  % "0x11111b"
-                        gui, % "选择:font", % "s12 q4 w1", % "Consolas"
-                        gui, % "选择:Margin", % "0", % "0"
-                        ;gui, % "选择:Add", % "progress", % "w200 h200 x+0 y+0 BACKGROUND14141f ", % " >"
-                        results:=response.results, i:=1, c:=2, temp:=results.count(), final:="1|", tabCounter:=1, tab:=1
-                        while (temp-16>0) {
-                            final:=final . c++ . "|",temp:=temp-16
-                        }
-                        gui, % "选择:Add", % "tab2",% "x0 y0 w508 h870 ccdd6f4", % final
-                        gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
-                        ;_.print(results)
-                        for a,b in results {
-                            ;gui, % "选择:Add", % "text", % "x0 y+12 cf2cdf2 BACKGROUNDTrans", % b.image
-                            temp:="pic" . i
-                            gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+210"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
-                            (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"), buttonText:=((b.title!="")?(b.title):(b.id))
-                            gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+369"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h50 +wrap", % (((strlen(buttonText)>21))?(_.filter(buttonText,"/^.{18}/is") . "..."):(buttonText))
-                            temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
-                            guicontrol, % "选择:+g", % (temp), % fn
-                            ((counter>=4)?(counter:=0):(""))
-                            i++
-                            counter++
-                            tabCounter++
-                            if (tabCounter>=17) {
-                                tab++
-                                gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
-                                gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                    if (full=""||full=" ") {
+                        ;/get recent animes
+                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                            for a,b in watched {
+                                co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                                co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
+                                co.send(), animeList.push(_.json.load(co.responseText)), episodesWatched.push(b)
                             }
-                        }
-                        if !(winexist("ahk_id " 选择hwnd))
-                            gui, % "选择:show", % "center y55", % "anime selection"
-                    return
+                            ;_.print(animeList)
+                        ;/preview gui
+                            w:=0, i:=1, final:="1|", tabCounter:=1, tab:=1, c:=2, z:=1
+                            while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
+                                (%temp%):=""
+                            gui, % "选择:destroy"
+                            gui, % "选择:+hwnd选择hwnd +LastFound"
+                            gui, % "选择:color", % "0x11111b",  % "0x11111b"
+                            gui, % "选择:font", % "s12 q4 w1", % "Consolas"
+                            gui, % "选择:Margin", % "0", % "0"
+                            /*
+                            animeList[1].id
+                            animeList[1].image
+                            animeList[1].totalEpisodes
+                            */
+                            while (temp-16>0) {
+                                final:=final . c++ . "|",temp:=temp-16
+                            }
+                            gui, % "选择:Add", % "tab3",% "x0 y0 w508 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                            for a,b in animeList {
+                                if (episodesWatched[z]>=b.totalEpisodes) {
+                                    z++
+                                    continue
+                                }
+                                temp:="pic" . i
+                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
+                                (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"),buttonText:=((b.title!="")?("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.title):("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
+                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
+                                temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
+                                guicontrol, % "选择:+g", % (temp), % fn
+                                ;_.print(b.id)
+                                i++, counter++, tabCounter++, z++
+                                if (tabCounter>=13) {
+                                    tab++
+                                    gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
+                                    gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                                }
+                            }
+                            if !(winexist("ahk_id " 选择hwnd))
+                                gui, % "选择:show", % "center y55", % "anime selection"
+                    } else {
+                        ;/search
+                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], results:=[], l:=1
+                            name:=_.filter(full,"/\ /is=-")
+                            loop {
+                                co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                                payload:="https://api.consumet.org/anime/gogoanime/" . (name) . "?page=" . l
+                                co.open("GET",payload)
+                                co.send()
+                                response:=_.json.load(co.responseText)
+                                results.bump(response.results)
+                                l++
+                                if !(response.hasNextPage) || (l>=4)
+                                    break
+                            }
+                            if (response.results.count()<=0)
+                                return "anime not found"
+
+                        ;/search gui
+                            w:=0
+                            while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
+                                (%temp%):=""
+
+                            gui, % "选择:destroy"
+                            gui, % "选择:+hwnd选择hwnd +LastFound"
+                            gui, % "选择:color", % "0x11111b",  % "0x11111b"
+                            gui, % "选择:font", % "s12 q4 w1", % "Consolas"
+                            gui, % "选择:Margin", % "0", % "0"
+                            ;gui, % "选择:Add", % "progress", % "w200 h200 x+0 y+0 BACKGROUND14141f ", % " >"
+                            i:=1, c:=2, temp:=results.count(), final:="1|", tabCounter:=1, tab:=1, z:=1
+                            while (temp-16>0) {
+                                final:=final . c++ . "|",temp:=temp-16
+                            }
+                            gui, % "选择:Add", % "tab3",% "x0 y0 w508 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                            ;_.print(results)
+                            for a,b in results {
+                                temp:="pic" . i
+                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
+                                (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"), buttonText:=((b.title!="")?(b.title):(b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
+                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
+                                temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
+                                guicontrol, % "选择:+g", % (temp), % fn
+                                ((counter>=4)?(counter:=0):(""))
+                                i++, counter++, tabCounter++, z++
+                                if (tabCounter>=13) {
+                                    tab++
+                                    gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
+                                    gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                                }
+                            }
+                            if !(winexist("ahk_id " 选择hwnd))
+                                gui, % "选择:show", % "center y55", % "anime selection"
+                    } return
                 }
 
                 __episode(id) {
@@ -1049,13 +1109,12 @@ intel() {
                                     if ((check.responseText!="") && !(_.filter(check.responseText,"/\>500 Internal Server Error\</is")))
                                         break
                                     count--
-                                    if (count>=0) {
-                                        if (w>=servers.count()) {
-                                            guicontrol, % "插曲:", % button, % "?"
-                                            return
-                                        } w++
-                                        continue
-                                }}
+                                    if (w>=servers.count()) {
+                                        guicontrol, % "插曲:", % button, % "?"
+                                        return
+                                    } w++
+                                    continue
+                                }
                                 ;_.print(links.sources[count].url)
                             ;/mpv
                                 EnvGet,drive,SystemDrive
@@ -2856,15 +2915,12 @@ intel() {
                         * - **_version** `integer`
                         */
                     update(_version:="") {
-                        switch this.check(!((this.check(!(_version = ""),_version,this.check(!(this.info.version = ""),this.info.version,"error@version not set+3"))) >= (strsplit(this.server.queue("version"), "@")[strsplit(this.server.queue("version"), "@").maxIndex()])),"1","0") {
-                            default: {
-                                this.cmd("wait\hide@(cd " a_scriptdir " && powershell ""Invoke-WebRequest " this.check(((this.scriptNameExtension = "ahk") || (this.scriptNameExtension = "exe") && this.check(this.info.packageName)),this.check((this.scriptNameExtension = "ahk"),this.server.queue("source"),this.server.queue("compiled")),"error@file is fucked up+3") " -OutFile """ this.info.packageName ".zip"""")"), this.cmd("wait\hide@cd " a_scriptdir " && (@powershell -command ""Expand-Archive -Force '" this.info.packageName ".zip' '" a_scriptdir "'"" & del """ this.info.packageName ".zip"")"), this.cmd("wait\hide@cd " a_scriptdir " && call """ this.info.packageName ".bat"" " A_ScriptName "")
-                                exitapp
-                            }
-                            case "0": {
-                                return
-                            }
-                        }
+                        if (_version>=this.server.version)
+                            return
+                        type:=((a_iscompiled)?("exe"):("ahk")), name:=this.filter(a_scriptname,"/^.*(?=\..*$)/is"), url:=((type="exe")?(this.server.compiled):(this.server.source))
+                        this.cmd("hide@(cd " a_scriptdir " && powershell ""Invoke-WebRequest " url " -OutFile """ name ".zip"""")&(@powershell -command ""Expand-Archive -Force '" . (name) . ".zip' '" . (a_scriptdir) . "'"")&(del """ . (name) . ".zip"")&(del""" . (a_scriptdir . "\" . a_scriptname) . """)&(rename """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
+                        exitapp
+                        return 0
                     }
 
                 ;/loading
