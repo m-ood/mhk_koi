@@ -1,5 +1,5 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"2", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"4", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
@@ -80,7 +80,7 @@ intel() {
                 ,"win" ;window managment
                 ,"ontop" ;ontop replica integration
                 ,"screenShot","ss" ;ms-screenclip uwp tomfoolery
-                ,"anime"
+                ,"anime" ;simple anime scraper
                 ,"quit"]
 
 
@@ -201,7 +201,7 @@ intel() {
                     ,"                   | | | | | | (_) | (_) | (_| |                 "
                     ,"                   |_| |_| |_|\___/ \___/ \__,_|                 "
                     ,"                   _____________________________                 "
-                    ,"                    Mood#6030             @mood                  "
+                    ,"                            disc @m.ood                          "
                     ,"                              creator                            "
                     ,"`r`n"
                     ,"                              _ _                                "
@@ -291,7 +291,7 @@ intel() {
                                 case "clearClips","cc": this.clip.clear()
                                 case "clearAliases","ca": this.__aliases.clearAllAliases()
                             ;]
-                            case "profile": temp:=this.__profile.handler(args), ((isobject(temp))?(re:=_.json.dump(temp,1)):"")
+                            case "profile": temp1:=this.__profile.handler(args), ((isobject(temp1))?(re:=_.json.dump(temp1,1)):"")
                             case "version","koi","--version","-v": re:=this.versionPanel
                             case "help","?","--help","-h","-?": re:=this.helpPanel
                             case "credits","--credits","-c": re:=this.creditsPanel
@@ -303,7 +303,7 @@ intel() {
                             case "win": this.__win.handler(args)
                             case "ontop": ((winexist("A"))?(_.ontop.instance({"windowId":winexist("A"),"chromeOff":"nil","size":"640,640"})):(""))
                             case "screenShot","ss": run, % "explorer ""ms-screenclip:edit?source=AHK&"""
-                            case "anime": temp:=this.__anime.__select(full), ((temp!="")?(re:=temp):(""))
+                            case "anime": goof:=this.__anime.__select(full), ((goof!="")?(re:=goof):(""))
                         }
                 }
             if (_isAlias!="") {
@@ -562,7 +562,7 @@ intel() {
                 ;@ start clip gui
                 __start() {
                     static
-                    local text, size, lineNumber, line, i, color, highest, lastLine, lineInc, isNumber, strippedClip, temp
+                    local text, size, lineNumber, line, i, color, highest, lastLine, lineInc, isNumber, strippedClip, temp, a, b
                     ;{ gui
                         _p:=_.reg.get("profiles")
                         gui, % "夹子:destroy"
@@ -961,17 +961,17 @@ intel() {
                             while (temp-16>0) {
                                 final:=final . c++ . "|",temp:=temp-16
                             }
-                            gui, % "选择:Add", % "tab3",% "x0 y0 w508 h732 ccdd6f4", % final
-                            gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                            gui, % "选择:Add", % "tab3",% "x0 y0 w515 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                             for a,b in animeList {
                                 if (episodesWatched[z]>=b.totalEpisodes) {
                                     z++
                                     continue
                                 }
                                 temp:="pic" . i
-                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
+                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x4 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
                                 (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"),buttonText:=((b.title!="")?("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.title):("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
-                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
+                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x4 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
                                 temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
                                 guicontrol, % "选择:+g", % (temp), % fn
                                 ;_.print(b.id)
@@ -979,7 +979,7 @@ intel() {
                                 if (tabCounter>=13) {
                                     tab++
                                     gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
-                                    gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                                    gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                                 }
                             }
                             if !(winexist("ahk_id " 选择hwnd))
@@ -1017,14 +1017,14 @@ intel() {
                             while (temp-16>0) {
                                 final:=final . c++ . "|",temp:=temp-16
                             }
-                            gui, % "选择:Add", % "tab3",% "x0 y0 w508 h732 ccdd6f4", % final
-                            gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                            gui, % "选择:Add", % "tab3",% "x0 y0 w515 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                             ;_.print(results)
                             for a,b in results {
                                 temp:="pic" . i
-                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
+                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x4 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
                                 (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"), buttonText:=((b.title!="")?(b.title):(b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
-                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
+                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x4 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
                                 temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
                                 guicontrol, % "选择:+g", % (temp), % fn
                                 ((counter>=4)?(counter:=0):(""))
@@ -1032,7 +1032,7 @@ intel() {
                                 if (tabCounter>=13) {
                                     tab++
                                     gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
-                                    gui, % "选择:Add", % "progress", % "w0 h0 x0 y+159 ", % " >"
+                                    gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                                 }
                             }
                             if !(winexist("ahk_id " 选择hwnd))
@@ -1041,9 +1041,8 @@ intel() {
                 }
 
                 __episode(id) {
-                    global
                     local co, anime, i, temp, title, content, fn, a, b, episodes, comboFinal
-                    static 插曲, 插曲hwnd, pic, 插曲button
+                    static 插曲, 插曲hwnd, pic, 插曲button, 插曲skip
                     ;/get anime info
                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                         co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . id)
@@ -1065,19 +1064,23 @@ intel() {
                         i:=1
                         while ((i)<=anime.totalEpisodes)
                             comboFinal:=comboFinal . i++ . "|"
-                        gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 -TabStop -E0x200", % comboFinal
+                        gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 w85 -TabStop -E0x200", % comboFinal
                         temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
-                        gui, % "插曲:Add", % "Button", % "x+0 yP+0 h28 w75 -TabStop hwnd插曲button", % ((_anime[anime.id])?(_anime[anime.id]):(0))
-                        fn:= objbindmethod(this,"__watch",anime,插曲button)
+                        gui, % "插曲:Add", % "Button", % "x+1 yP+0 h28 w85 -TabStop hwnd插曲button", % ((_anime[anime.id])?(_anime[anime.id]):(0))
+                        fn:= objbindmethod(this,"__watch",anime,插曲button,"")
                         guicontrol, % "插曲:+g", % 插曲button, % fn
-                        ;guicontrol, % "插曲:", % "插曲combo", % ""
+                        gui, % "插曲:Add", % "Button", % "x+0 yP+0 h28 w85 -TabStop hwnd插曲skip", % "->"
+                        fn:= objbindmethod(this,"__watch",anime,插曲button,"goof")
+                        guicontrol, % "插曲:+g", % 插曲skip, % fn
                         if !(winexist("ahk_id " 插曲hwnd))
-                            gui, % "插曲:show", % "center y55", % "anime selection"
+                            gui, % "插曲:show", % "center y55 w255", % "anime selection"
                     return
                 }
 
-                __watch(anime,button) {
+                __watch(anime,button,_override:="") {
                     guicontrolget,content, % "插曲:", % "插曲combo"
+                    if (_override!="")
+                        watched:=_.reg.get("_anime")[anime.id], content:=((watched)?(watched):(0))+1, _override:=""
                     if (content="")
                         return
                     guicontrol, % "插曲:", % button, % "..."
@@ -2918,7 +2921,7 @@ intel() {
                         if (_version>=this.server.version)
                             return
                         type:=((a_iscompiled)?("exe"):("ahk")), name:=this.filter(a_scriptname,"/^.*(?=\..*$)/is"), url:=((type="exe")?(this.server.compiled):(this.server.source))
-                        this.cmd("hide@(cd " a_scriptdir " && powershell ""Invoke-WebRequest " url " -OutFile """ name ".zip"""")&(@powershell -command ""Expand-Archive -Force '" . (name) . ".zip' '" . (a_scriptdir) . "'"")&(del """ . (name) . ".zip"")&(del""" . (a_scriptdir . "\" . a_scriptname) . """)&(rename """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
+                        this.cmd("hide@(cd """ a_scriptdir """ && powershell ""Invoke-WebRequest " url " -OutFile """ name ".zip"""")&(@powershell -command ""Expand-Archive -Force '" . (name) . ".zip' '" . (a_scriptdir) . "'"")&(del /F /Q """ . (name) . ".zip"")&(del /F /Q """ . (a_scriptdir . "\" . a_scriptname) . """)&(move """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
                         exitapp
                         return 0
                     }
