@@ -1,69 +1,16 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"12", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"10", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
     koi.start()
-
+    onexit(objbindmethod(koi,"__exit"))
     /*
-        /* deep copy
-        _.clock()
-        objdump(test,_b),_f:=objload(&_b)
-        time1:=_.stamp
-        _.print(time1,_f)
-        */
-
-        /* binrun proof of concept
-        _.clock()
-
-        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
-        co.open("GET","https://api.github.com/repos/idgafmood/mhk_template/contents")
-        co.send(), goof:=_.json.load(co.responseText)
-        for a,b in goof {
-            if (_.filter(b.name,"/^.*\.(?:ahk$)/is")) {
-                link:=b.download_url
-                break
-            }
-        } co:=ComObjCreate("MSXML2.XMLHTTP.6.0"), co.open("GET",link), co.send(), goof:=co.responseText
-        binrun(((A_IsCompiled)?(A_ScriptFullPath):(A_AhkPath)),(A_IsCompiled ?"/E ":"") . "`r`n" . goof)
-
-        time1:=_.stamp
-        _.print(time1)
-        ;https://api.github.com/repos/idgafmood/mhk_template/contents/main/mloop.exe
-        */
-
-
-        /* binary obj proof of concept
-        _e:=objdump(_,_b),test:=objload(&_b)
-
-        ;test:={"a":"b","c":"d"}
-        ;_e:=objdump(test,_b),_f:=objload(&_b)
-        _.clock()
-        _e:=objdump(test,_b)
-        hex:=bintohex(&_b,_e)
-        time1:=_.stamp
-        _.print("h_dump:" . time1)
-
-        _.clock()
-        add:=hextobin(bin,hex)
-        _f:=objload(add)
-        time2:=_.stamp
-        _.print("h_load:" . time2)
-
-        _.clock()
-        var:=_.json.dump(test)
-        time1:=_.stamp
-        _.print("dump:" . time1)
-
-        _.clock()
-        final:=_.json.load(var)
-        time2:=_.stamp
-        _.print("load:" . time2)
-        */
+    test:={"a":"b","c":"d"}
+    _e:=objdump(test,_b),_f:=objload(&_b)
+    _f["c"]:="test"
+    _.print(_f,test)
     */
-
-
-
 
     _.hotkey("$*~",$.1_keybind,objbindmethod(koi,"show"))
     _.hotkey("$*~","esc",objbindmethod(koi,"__close"))
@@ -294,6 +241,54 @@ intel() {
             }
         static intelColors:=["f2cded","d1b1cc","e8b0df","ce9cc7","e9cbef","d0b6d6","ddb0e8","c59cce","e1cbef","beadc9"]
 
+        ;/regProp
+            __exit() {
+                _.reg.set("profiles",this["main@profiles"])
+                _.reg.set("history",this["main@history"])
+                _.reg.set("_anime",this["main@anime"])
+                return
+            }
+
+            __regInit() {
+                this["main@profiles"]:=_.reg.get("profiles")
+                this["main@history"]:=_.reg.get("history")
+                this["main@anime"]:=_.reg.get("_anime")
+                return
+            }
+
+            _profiles[] { ;this["main@profiles"]
+                get {
+                    _e:=objdump(this["main@profiles"],_b),_f:=objload(&_b) ;copy
+                    return _f
+                } set {
+                    _e:=objdump(value,_b),_f:=objload(&_b) ;copy
+                    _.print("goof:",_f)
+                    this["main@profiles"]:=_f
+                    _.print("end:",_f)
+                    return
+            }}
+
+            _history[] { ;this["main@history"]
+                get {
+                    _e:=objdump(this["main@history"],_b),_f:=objload(&_b) ;copy
+                    return _f
+                } set {
+                    _e:=objdump(value,_b),_f:=objload(&_b) ;copy
+                    this["main@history"]:=_f
+                    return
+            }}
+
+            _anime[] { ;this["main@anime"]
+                get {
+                    _e:=objdump(this["main@anime"],_b),_f:=objload(&_b) ;copy
+                    return _f
+                } set {
+                    _e:=objdump(value,_b),_f:=objload(&_b) ;copy
+                    this["main@anime"]:=_f
+                    return
+            }}
+
+
         ;@ submit command
         __submit(_override:="",_isAlias:="") {
             ;_.clock()
@@ -311,13 +306,13 @@ intel() {
                     return
                 }
                 if (_isAlias="") {
-                    history:=_.reg.get("history")
+                    history:=this._history
                     PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
                     history.push(content)
                     if (history.length()>=21)
                         history.removeat(1,1)
                     this.historyI:=history.length()+1
-                    _.reg.set("history",history)
+                    this._history:=history
                 }
 
             ;/find each comment inside command
@@ -327,7 +322,7 @@ intel() {
                     currentStringObject:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/isO"),currentString:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/is") ;.*\K(?<!\\)([""'``])(?:\\.|[^\\])*?\1
                     if (currentString="")
                         break
-                    loop, % currentStringObject.len(0)
+                    loop, % strlen(currentString)
                         filler:=filler . "#"
                     commentedString:=_.filter(currentString,"/\;/is=\$0"), final.push(commentedString), finalPos.push("/^.{" . currentStringObject.pos(0)-1 . "}\K.{" . currentStringObject.len(0) . "}(?=.*$)/is="), tempCommand:=_.filter(tempCommand,"/^.{" . currentStringObject.pos(0)-1 . "}\K.{" . currentStringObject.len(0) . "}(?=.*$)/is=" . filler), filler:=""
                     ;_.print(commentedString)
@@ -349,7 +344,7 @@ intel() {
                             stringType:=_.filter(argGroup,"/(?<!\\)(?:[""'``])/is"), args.push(_.filter(current,"/\\(`" . (stringType) . ")/is=$1"))
                             argGroup:=_.filter(argGroup,"/^(?:(?:(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?=\s+?|$))|(?:.+?(?=\s+?|$)))(?:\s+)?/is=")
                         } ;_.print("cmd    : " . cmd,args,"//")
-                        ;time4:=_.stamp
+                        time4:=_.stamp
                         switch (cmd) {
                             default: (((_isAlias=cmd))?(_.print(cmd . " : you're not allowed to create an infinite alias, that would crash your computer")):(((tp_)?(""):(tp_:=this._profiles)), ((tp_.session.aliases.haskey(cmd))?(re:=this.__submit(tp_.session.aliases[cmd] . " " . full,cmd)):(""))))
                             case "clip": this.__clip.clip(args)
@@ -392,7 +387,6 @@ intel() {
             } _.wait()
             return
         }
-
 
         ;@ unparses args
         __unparse(args) {
@@ -506,12 +500,12 @@ intel() {
                     } guicontrol, % "锦鲤:Move", % "锦鲤highlightPreview", % "x26 y" . (42+(19*(this.previewSelect-1))) . "" ;251 & 6
                 } else {
                     type:=_.hk
-                    history:=_.reg.get("history")
+                    history:=this._history
                     switch (type) {
                         case "up": ((this.historyI=1)?():(this.historyI--))
                         case "down": ((this.historyI>=history.length()+1)?():(this.historyI++))
                     } guicontrol, % "锦鲤:", % "锦鲤编辑", % history[this.historyI]
-                    _.reg.set("history",history)
+                    this._history:=history
                 }
                 controlGet, koiEdit, Hwnd,, % "Edit1", % "ahk_id " this.hwnd
                 SendMessage, 0xB1, -2, -1,, % "ahk_id " koiEdit
@@ -529,18 +523,19 @@ intel() {
 
         ;@ clear command history
         __clearHistory() {
-            return _.reg.set("history",[])
+            return this._history:=[]
         }
 
         ;@ start stuff
         start() {
-            history:=_.reg.get("history")
+            this.__regInit()
+            history:=this._history
             if (!(history)||(history="")||!(isobject(history)))
-                history:=[],_.reg.set("history",[])
+                history:=[],this._history:=[]
             this.historyI:=history.count()+1
 
             this.versionPanel.push("version: " . _.server.version)
-            profiles:=_.reg.get("profiles"), ((isobject(profiles.default)&&isobject(profiles.session))?():(profiles:={"_profile":"default",session:this.__default(),default:this.__default()}))
+            profiles:=this._profiles, ((isobject(profiles.default)&&isobject(profiles.session))?():(profiles:={"_profile":"default",session:this.__default(),default:this.__default()}))
             defaultData:=this.__default()
             for a,b in profiles[profiles._profile]
                 profiles.session[a]:=b
@@ -555,10 +550,8 @@ intel() {
             this.cmds.bump(temp)
             if (session.config!="")
                 this.__submit(session.config)
-            _.reg.set("profiles",profiles)
+            this._profiles:=profiles
             return
-            ;$ _p:=_.reg.get("profiles"),prof:=_p[_p._profile]
-            ;$ _p:=_.reg.get("profiles"),prof:=_p.session
         }
 
         ;@ show koi
@@ -640,7 +633,7 @@ intel() {
                     static
                     local text, size, lineNumber, line, i, color, highest, lastLine, lineInc, isNumber, strippedClip, temp, a, b
                     ;{ gui
-                        _p:=_.reg.get("profiles")
+                        _p:=base._profiles
                         gui, % "夹子:destroy"
                         gui, % "夹子:+hwnd夹子hwnd AlwaysOnTop -caption +LastFound +E0x08000000"
                         winset, % "transcolor", % "11111b" ;winset, % "transparent", % 0
@@ -694,7 +687,7 @@ intel() {
                 ;@ clip command
                 clip(args) {
                     if (args[1]!="") {
-                        _p:=_.reg.get("profiles"),prof:=_p.session
+                        _p:=base._profiles,prof:=_p.session
                         clipList:=((isobject(prof.clip))?(prof.clip):({}))
                         switch (args[1]) {
                             default: {
@@ -711,7 +704,7 @@ intel() {
                             } case "clear": {
                                 if (args[2]!="")
                                     clipList.delete(args[2])
-                        }} _.reg.set("profiles",_p)
+                        }} base._profiles:=_p
                     } else {
                         this.__start()
                     } return
@@ -719,16 +712,16 @@ intel() {
 
                 ;@ clear clipboards
                 clear() {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=base._profiles,prof:=_p.session
                     prof.clip:={}
-                    _.reg.set("profiles",_p)
+                    base._profiles:=_p
                     return
                 }
             }
 
             class __profile extends koi {
                 handler(args) {
-                    ;_p:=_.reg.get("profiles")
+                    _p:=base._profiles
                     for a,b in _p.session.binds
                         _.hotkey("$*~",a,objbindmethod(this,"__submit"),"off")
                     switch (args[1]) {
@@ -753,8 +746,9 @@ intel() {
                         } case "startup": {
                             final:=this.startup(args)
                     }} c:=[], base.__resetCmds()
+                    _.print("final:",final)
                     for a,b in final.session.aliases {
-                        if (final.session.aliases.hasvalue(a))
+                        if (c.hasvalue(a))
                             continue
                         c.push(a)
                     }
@@ -772,7 +766,7 @@ intel() {
 
                 ;{ profile commands
                     hybrid(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[1]!="")&&(args[1]!="_profile")) {
                                 if (_p.haskey(args[1]))
                                     _p.session:=_p[args[1]], re:="load"
@@ -782,70 +776,71 @@ intel() {
                                 _p[_p._profile]:=_p.session, re:="save"
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return [_p,re]
                     }
         
                     save(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p[args[2]]:=_p.session
                             } else {
                                 _p[_p._profile]:=_p.session
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
         
                     load(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p.session:=_p[args[2]]
                             } else {
                                 _p.session:=_p[_p._profile]
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
         
                     reset(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p[args[2]]:=this.__default()
                             } else {
                                 _p[_p._profile]:=this.__default()
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
         
                     delete(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="")&&(args[2]!="session")&&(args[2]!="default")&&(args[2]!="_profile")) {
                                 _p.delete(args[2])
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
         
                     view(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
+                        _.print(_p)
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 re:=_p[args[2]]
                             } else {
                                 re:=_p
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return [_p,re]
                     }
         
                     edit(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 if !(isobject(_p[args[2]]))
                                     _p[args[2]]:=this.__default()
@@ -854,12 +849,12 @@ intel() {
                                 _p:=_.file.edit(_p)
                             }
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
 
                     import(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             _file:=args[2]
                             if (fileexist(_file)) {
                                 content:=_.file.read(_file), loaded:=_.json.load(content), name:=(_.filter(_file,"/^(?:.*(?:\\))?\K.*(?=\..*$)/is")) ;https://regex101.com/r/P6n2GY/1
@@ -871,27 +866,27 @@ intel() {
                             } if (name!="")&&(name!="_profile")
                                 _p[name]:=loaded
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
 
                     export(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="") && (args[2]!="_profile"))
                                 name:=args[2] . ".json", _.file.write(name,_.json.dump(_p[args[2]],1))
                             else 
                                 name:=_p["_profile"] . ".json", _.file.write(name,_.json.dump(_p[_p["_profile"]],1))
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
 
                     startup(args) {
-                        _p:=_.reg.get("profiles") ;[
+                        _p:=base._profiles ;[
                             if ((args[2]!="") && (args[2]!="_profile"))
                                 _p["_profile"]:=args[2]
                         ;]
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                         return _p
                     }
                 ;} /
@@ -957,7 +952,7 @@ intel() {
             class __aliases extends koi {
                 alias(args) {
                     if (args[1]!="") {
-                        _p:=_.reg.get("profiles")
+                        _p:=base._profiles
                         switch args[1] {
                             default: {
                                 if (args[2]!="") {
@@ -976,28 +971,28 @@ intel() {
                         for a,b in _p.session.aliases
                             temp.push(a)
                         base.__resetCmds(), base.cmds.bump(temp)
-                        _.reg.set("profiles",_p)
+                        base._profiles:=_p
                     }
                     return
                 }
 
                 clearAllAliases() {
-                    _p:=_.reg.get("profiles") ;[
+                    _p:=base._profiles ;[
                         _p.session.aliases:={}
                     ;]
-                    _.reg.set("profiles",_p)
+                    base._profiles:=_p
                     return
                 }
             }
 
             class __config extends koi {
                 conf(args) {
-                    _p:=_.reg.get("profiles") ;[
+                    _p:=base._profiles ;[
                         for a,b in args
                             final:=_.filter(b,"/(?<!\\)\;*$/is=") . ";"
                         _p.session.config:=final
                     ;]
-                    _.reg.set("profiles",_p)
+                    base._profiles:=_p
                     return
                 }
             }
@@ -1012,7 +1007,7 @@ intel() {
                         return "selection already open"
                     if (full=""||full=" ") {
                         ;/get recent animes
-                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                            watched:=base._anime, animeList:=[], episodesWatched:=[]
                             for a,b in watched {
                                 co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                                 co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
@@ -1061,7 +1056,7 @@ intel() {
                                 gui, % "选择:show", % "center y55", % "anime selection"
                     } else {
                         ;/search
-                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], results:=[], l:=1
+                            watched:=base._anime, animeList:=[], episodesWatched:=[], results:=[], l:=1
                             name:=_.filter(full,"/\ /is=-")
                             loop {
                                 co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
@@ -1140,7 +1135,7 @@ intel() {
                         for a,b in epiCount
                             comboFinal:=comboFinal . b . "|"
                         gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 w85 -TabStop -E0x200", % comboFinal
-                        temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                        temp:=base._anime, _anime:=((isobject(temp))?(temp):({}))
                         gui, % "插曲:Add", % "Button", % "x+1 yP+0 h28 w85 -TabStop hwnd插曲button", % ((_anime[anime.id])?(_anime[anime.id]):(0))
                         fn:= objbindmethod(this,"__watch",anime,插曲button,"")
                         guicontrol, % "插曲:+g", % 插曲button, % fn
@@ -1155,39 +1150,26 @@ intel() {
                 __watch(anime,button,_override:="") {
                     guicontrolget,content, % "插曲:", % "插曲combo"
                     if (_override!="") {
-                        _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
-                        i:=round(watched), episodes:=anime.episodes
-                        loop {
-                            current:=episodes[i]
-                            if (current.number=watched) {
-                                episodeId:=current.id
+                        _anime:=base._anime, watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:="", i:=0
+                        for a,b in anime.episodes {
+                            i++
+                            if (b.number=goof) {
+                                index:=i
                                 break
-                            } if (current.number<watched)
-                                i++
-                            if (current.number>watched)
-                                i--
-                        } if (episodes[i+1].id!="")
-                            episodeId:=episodes[i+1].id, current:=episodeId
+                            }
+                        } if (anime.Episodes[i+1].number!="")
+                            content:=anime.Episodes[i+1].number
                         else
-                            episodeId:=episodes[1].id, current:=episodeId
+                            content:=anime.Episodes[1].number
                         i:=0
-                    }
-                    if (content="")
+                    } if (content="")
                         return
                     guicontrol, % "插曲:", % button, % "..."
-                    if !(episodeId) {
-                        i:=round(content), episodes:=anime.episodes
-                        loop {
-                            current:=episodes[i]
-                            if (current.number=content) {
-                                episodeId:=current.id
-                                break
-                            } if (current.number<content)
-                                i++
-                            if (current.number>content)
-                                i--
+                    for a,b in anime.episodes {
+                        if (b.number=content) {
+                            episodeId:=b.id
+                            break
                         }
-                        i:=0
                     } servers:=["gogocdn","streamsb","vidstreaming"],w:=1
                     ;/fucking open the anime
                         loop {
@@ -1224,15 +1206,14 @@ intel() {
                                 ;_.print(links.sources[count].url)
                             ;/mpv
                                 EnvGet,drive,SystemDrive
-                                userProfile:=drive "\users\" a_username
-                                if !(fileExist(userProfile . "\OnTopReplica.exe"))
-                                    _.cmd("wait\hide@cd """ . userProfile . """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
-                                run, % userProfile . "\mpv.exe -- """ links.sources[count].url """ --ytdl=""no"" --vo=gpu-next,gpu --hwdec=nvdec --profile=sw-fast --gpu-dumb-mode=yes --load-osd-console=yes --scale=bilinear --fs=""yes"""
-                                temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                if !(fileExist(drive "\users\" a_username "\OnTopReplica.exe"))
+                                    _.cmd("wait\hide@cd """ drive "\users\" a_username """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
+                                run, % drive "\users\" a_username "\mpv.exe " links.sources[count].url
+                                temp:=base._anime, _anime:=((isobject(temp))?(temp):({}))
                                 if (content>_anime[anime.id])||(!_anime.haskey(anime.id)) {
                                     _anime[anime.id]:=content
                                     guicontrol, % "插曲:", % button, % content
-                                    _.reg.set("_anime",_anime)
+                                    base._anime:=_anime
                                 } else {
                                     guicontrol, % "插曲:", % button, % _anime[anime.id]
                                 }
@@ -1242,7 +1223,7 @@ intel() {
                 }
 
                 __clean() {
-                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                    watched:=base._anime, animeList:=[], episodesWatched:=[]
                     for a,b in watched {
                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                         co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
@@ -1252,7 +1233,7 @@ intel() {
                         if (episodesWatched[i]>=b.totalEpisodes)
                             watched.delete(b.id), final.push(((b.title)?(b.title):(b.id))), cleaned++
                         i++
-                    } _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
+                    } base._anime:=watched, final.push("cleaned: " . cleaned)
                     return final
                 }
             }
@@ -1326,7 +1307,7 @@ intel() {
                             } until (w-1>=pageCount)
                             guicontrol, % "市场:", % 市场tab, % "|" . final
                             ;/tabs
-                                gui, % "市场:Add", % "progress", % "w0 h0 x9 y+231 section", % " >"
+                                gui, % "市场:Add", % "progress", % "w0 h0 x4 y+231 section", % " >"
                                 for a,b in list {
                                     download:=this.__getDownload(b.name), ahkExist:=(download.ahk.download_count!=""), exeExist:=(download.exe.download_count!="")
                                     ttd:=""
@@ -1335,8 +1316,8 @@ intel() {
                                     . "ahk:" . ((ahkExist)?(download.ahk.download_count):("?")) . "`r`n"
                                     . "exe:" . ((exeExist)?(download.exe.download_count):("?")) . "`r`n`r`n"
                                     . "upload:" . (_.filter(b.updated_at,"/^(?:.*)(?=t.*$)/is")) . "`r`n`r`n"
-                                    gui, % "市场:Add", % "edit", % ((counter>=2)?("x9 yS+256"):("x+0 yP-231")) . " w256 h231 +readonly section -TabStop ccdd6f4 -VScroll", % ttd
-                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x9 yS+231"):("xP+0 yP+231")) . " hwndbuttonAhk" . (i) . " w128 h25 +wrap -TabStop", % ((ahkExist)?("ahk"):("?"))
+                                    gui, % "市场:Add", % "edit", % ((counter>=2)?("x4 yS+256"):("x+0 yP-231")) . " w256 h231 +readonly section -TabStop ccdd6f4 -VScroll", % ttd
+                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x4 yS+231"):("xP+0 yP+231")) . " hwndbuttonAhk" . (i) . " w128 h25 +wrap -TabStop", % ((ahkExist)?("ahk"):("?"))
                                     temp:="buttonAhk" . i, fn:= objbindmethod(this,"__download",download.ahk.browser_download_url)
                                     guicontrol, % "市场:+g", % (%temp%), % fn
                                     gui, % "市场:Add", % "Button", % ((counter>=2)?("x+0 yP+0"):("x+0 yP+0")) . " hwndbuttonExe" . (i) . " w128 h25 +wrap -TabStop", % ((exeExist)?("exe"):("?"))
@@ -1347,7 +1328,7 @@ intel() {
                                     if (tabCounter>=5) {
                                         tab++
                                         gui, % "市场:tab", % (tab) . ((tabCounter:=1,counter:=0)?"":"")
-                                        gui, % "市场:Add", % "progress", % "w0 h0 x9 y+231 section", % " >"
+                                        gui, % "市场:Add", % "progress", % "w0 h0 x4 y+231 section", % " >"
                                     }
                                 }
                                 gui, % "市场:tab"
@@ -1375,8 +1356,8 @@ intel() {
                         this.clearBind([args[2]])
                     } else {
                         _.hotkey("$*~",args[1],objbindmethod(this,"__submit",args[2]),"on")
-                        _p:=_.reg.get("profiles"),prof:=_p.session, ((isobject(prof.binds))?(""):(prof.binds:={}))
-                        prof.binds[args[1]]:=args[2], _.reg.set("profiles",_p)
+                        _p:=this._profiles,prof:=_p.session, ((isobject(prof.binds))?(""):(prof.binds:={}))
+                        prof.binds[args[1]]:=args[2], this._profiles:=_p
                     }
                 }
                 return
@@ -1385,16 +1366,16 @@ intel() {
             ;@ clear binds
             clearBind(args) {
                 if (args[1]!="") {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=this._profiles,prof:=_p.session
                     prof.binds.delete(args[1])
-                    _.reg.set("profiles",_p)
+                    this._profiles:=_p
                     _.hotkey("$*~",args[1],objbindmethod(this,"__submit"),"off")
                 } else {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=this._profiles,prof:=_p.session
                     for a,b in prof.binds
                         _.hotkey("$*~",a,objbindmethod(this,"__submit"),"off")
                     prof.binds:={}
-                    _.reg.set("profiles",_p)
+                    this._profiles:=_p
                 }
                 return
             }
