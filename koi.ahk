@@ -1,10 +1,11 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"12", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"17", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
+    coordmode, % "Mouse", % "Screen"
     koi.start()
-
+    ;koi.__macro.__parse(["/ca/s{blind}{a down}/w+3/s{blind}{a up}/w+3/l/r"])
     /*
         /* deep copy
         _.clock()
@@ -131,7 +132,7 @@ intel() {
                 ,"testCommand"
                 ,"notify" ;show custom notification
                 ,"print" ;console window popup
-                ,"alias" ;create alias but shorter
+                ,"alias" ;alias save but shorter
                 ,"alias save" ;create alias
                 ,"alias clear" ;clear alias
                 ,"config","--config" ;edit startup config
@@ -142,6 +143,10 @@ intel() {
                 ,"cleanAnimeList" ;clear finished anime from list
                 ,"market" ;open mhk market
                 ,"run" ;windows run command
+                ,"info","--info","-i" ;info panel
+                ,"tally +" ;increment tally
+                ,"tally -" ;decrement tally
+                ,"tally reset" ;reset tally
                 ,"quit"]
 
 
@@ -254,7 +259,7 @@ intel() {
             ;]
             ;[ credits panel
                 static creditsPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
-                    ,"                                                                 "
+                    ;,"                                                                 "
                     ,"                                     _ _ _                       "
                     ,"                                    | (_) |                      "
                     ," |                  ___ _ __ ___  __| |_| |_ ___               | "
@@ -286,6 +291,40 @@ intel() {
                     ,"                       based on her 'runner'                     "
                     ,"                            ahk script.                          "
                     ,""]                      
+            ;]
+            ;[ info panel
+                static infoPanel=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
+                ;,"                                                                 "
+                ,"                         _        __                             "
+                ,"                        (_)      / _|                            "
+                ," |                       _ _ __ | |_ ___                       | "
+                ," |                      | | '_ \|  _/ _ \                      | "
+                ," |                      | | | | | || (_) |                     | "
+                ," V                      |_|_| |_|_| \___/                      V "
+                ," _______________________________________________________________ "
+                ,"`r`n"
+                ,"    koi is a command palette emulator taking inspiration from    "
+                ,"     many game 'commands' and common notions from terminals.     "
+                ,"`r`n"
+                ,"   the script itself mainly abuses regex to emulate compilers,   "
+                ,"   the important concepts of koi commands is strings, escaping   "
+                ,"   and the multiple-command operator. Examples shown below -->   "
+                ,""
+                ,"   strings: profile save ""some name""                             "
+                ,"   escaping: profile load ""weird n\""ame""                         "
+                ,"   mco: profile load name;notify 'profile; loaded'               "
+                ,""
+                ,"   some notes; in strings the only escape sequences that works   "
+                ,"   is the current string type. If you use single quotes  ( ' )   "
+                ,"   you will only need to escape that character with:   ( \' ).   "
+                ,""
+                ,"   there is three types of valid strings: double quote ( "" ),   "
+                ,"            single quote ( ' ) and back-quote ( `` ).            "
+                ,"`r`n"
+                ,"   all of these concepts are meant to be very simple to learn,   "
+                ,"    many other operators/concepts could be added but it would    "
+                ,"        also increase the complexity so they arent added.        "
+                ,""]                       
             ;]
 
         ;/default data
@@ -324,12 +363,16 @@ intel() {
                 tempcommand:=content,final:=[],finalPos:=[],fullLine:=content
                 ;_.print("typed  :" . fullLine)
                 loop {
-                    currentStringObject:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/isO"),currentString:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/is") ;.*\K(?<!\\)([""'``])(?:\\.|[^\\])*?\1
+                    currentStringObject:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/isO"),currentString:=_.filter(tempCommand,"/(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1/is"), currentStringLength:=currentStringObject.len(0), currentStringPos:=currentStringObject.pos(0)-1 ;.*\K(?<!\\)([""'``])(?:\\.|[^\\])*?\1
                     if (currentString="")
                         break
-                    loop, % currentStringObject.len(0)
+                    loop, % currentStringLength
                         filler:=filler . "#"
-                    commentedString:=_.filter(currentString,"/\;/is=\$0"), final.push(commentedString), finalPos.push("/^.{" . currentStringObject.pos(0)-1 . "}\K.{" . currentStringObject.len(0) . "}(?=.*$)/is="), tempCommand:=_.filter(tempCommand,"/^.{" . currentStringObject.pos(0)-1 . "}\K.{" . currentStringObject.len(0) . "}(?=.*$)/is=" . filler), filler:=""
+                    commentedString:=_.filter(currentString,"/\;/is=\$0")
+                    final.push(commentedString)
+                    finalPos.push("/^.{" . currentStringPos . "}\K.{" . currentStringLength . "}(?=.*$)/is=")
+                    tempCommand:=_.filter(tempCommand,"/^.{" . currentStringPos . "}\K.{" . currentStringLength . "}(?=.*$)/is=" . filler)
+                    filler:=""
                     ;_.print(commentedString)
                 }
             ;/parse semicolon strings in reverse
@@ -376,8 +419,10 @@ intel() {
                             case "screenShot","ss": run, % "explorer ""ms-screenclip:edit?source=AHK&"""
                             case "anime": goof:=this.__anime.__select(full), ((goof!="")?(re:=goof):(""))
                             case "cleanAnimeList": re:=this.__anime.__clean()
-                            case "market": re:=this.__market.__search()
+                            case "market": re:=this.__market.__search(full)
                             case "run": re:=this.__windows.__run(args)
+                            case "info","--info","-f": re:=this.infoPanel
+                            case "tally":re:=this.__tally.__hybrid(args)
                         }
                 }
             ;_.print(time4)
@@ -620,6 +665,54 @@ intel() {
                 send, % "{blind}{tab up}"
             }
             return
+        }
+
+        class __gui extends koi {
+            titleBar(id,hwnd,width) {
+                local
+                static pic, pic1, mini, drag
+                barSize:=(width-109)
+                gui, % id . ":add", % "text", % "w" . (barSize) . " h21 x+0 y+0 BACKGROUNDTrans hwnddrag 0x201", % ""
+                fn:=objbindmethod(this,"__drag",hwnd)
+                guicontrol, % id . ":+g", % drag, % fn
+                gui, % id . ":Add", % "progress", % "wp hp xP+0 yP+0 BACKGROUND11111b section", % " >"
+                gui, % id . ":Add", % "ActiveX", % "xS+" . (barSize+1) . " yS+0 w109 h20 disabled +0x4000000 vpic", htmlfile
+                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1122936013082337421/buttons4.png' width='109' height='20' style='width: 100%; height:100%;'></div></body>")
+
+                gui, % id . ":add", % "text", % "w21 h21 xS+" . (barSize+1) . " yP+0 BACKGROUNDTrans hwndmini 0x201", % "-"
+                fn:=objbindmethod(this,"__minimize",hwnd)
+                guicontrol, % id . ":+g", % mini, % fn
+
+                gui, % id . ":add", % "text", % "w21 h21 x+18 yP+0 BACKGROUNDTrans hwndmini 0x201", % "#"
+                fn:=objbindmethod(this,"__enlarge",hwnd)
+                guicontrol, % id . ":+g", % mini, % fn
+
+                gui, % id . ":add", % "text", % "w21 h21 x+18 yP+0 BACKGROUNDTrans hwndmini 0x201", % "X"
+                fn:=objbindmethod(this,"__close",hwnd)
+                guicontrol, % id . ":+g", % mini, % fn
+                gui, % id . ":Add", % "progress", % "w109 h21 xS+" . (barSize) . " yS+0  disabled BACKGROUND11111b", % " >"
+                return
+            }
+
+            __minimize(hwnd) {
+                PostMessage, 0x0112, 0xF020,,, % "ahk_id " . hwnd
+                return
+            }
+
+            __enlarge(hwnd) {
+                ;PostMessage, 0x0112, 0xF030,,, % "ahk_id " . hwnd
+                return
+            }
+
+            __close(hwnd) {
+                PostMessage, 0x0112, 0xF060,,, % "ahk_id " . hwnd
+                return
+            }
+
+            __drag(hwnd) {
+                SendMessage 0xA1,2,,, % "ahk_id " . hwnd
+                return
+            }
         }
 
         ;[ commands
@@ -1003,13 +1096,18 @@ intel() {
             }
 
             class __anime extends koi {
-                __select(full) {
+                __select(full:="") {
                     static
-                    static 选择, 选择hwnd
+                    static 选择, 选择hwnd, pic
                     local name, co, payload, response, results, i, temp, counter, w, final, c, tabCounter, tab, buttonText, fn, a, b, animeList, watched, episodesWatched, episodesWatchedTemp, z, isDub, l
                     counter:=0
-                    if (winexist("ahk_id " 选择hwnd))
-                        return "selection already open"
+                    guicontrolget,content, % "选择:", % "选择edit"
+                    if (content="") {
+                        if (winexist("ahk_id " 选择hwnd))
+                            return "selection already open"
+                    } else {
+                        full:=content
+                    }
                     if (full=""||full=" ") {
                         ;/get recent animes
                             watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
@@ -1024,19 +1122,23 @@ intel() {
                             while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
                                 (%temp%):=""
                             gui, % "选择:destroy"
-                            gui, % "选择:+hwnd选择hwnd +LastFound"
+                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu +border"
                             gui, % "选择:color", % "0x11111b",  % "0x11111b"
                             gui, % "选择:font", % "s12 q4 w1", % "Consolas"
                             gui, % "选择:Margin", % "0", % "0"
+                            base.__gui.titleBar("选择",选择hwnd,515)
+                            gui, % "选择:Add", % "progress", % "w510 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
                             /*
                             animeList[1].id
                             animeList[1].image
                             animeList[1].totalEpisodes
                             */
-                            while (temp-16>0) {
-                                final:=final . c++ . "|",temp:=temp-16
+                            while (temp-8>0) {
+                                final:=final . c++ . "|",temp:=temp-8
+                                if (c>=7)
+                                    break
                             }
-                            gui, % "选择:Add", % "tab3",% "x0 y0 w515 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "tab3",% "x0 y+0 w515 h500 ccdd6f4", % final
                             gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                             for a,b in animeList {
                                 if (episodesWatched[z]>=b.totalEpisodes) {
@@ -1053,12 +1155,17 @@ intel() {
                                 i++, counter++, tabCounter++, z++
                                 if (tabCounter>=13) {
                                     tab++
+                                    if (tab>=7)
+                                        break
                                     gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
                                     gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                                 }
                             }
                             if !(winexist("ahk_id " 选择hwnd))
                                 gui, % "选择:show", % "center y55", % "anime selection"
+                            gui, % "选择:tab"
+                            gui, % "选择:Add", % "ActiveX", % "x0 y21 w515 h610 disabled +0x4000000 vpic", htmlfile
+                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
                     } else {
                         ;/search
                             watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], results:=[], l:=1
@@ -1083,16 +1190,24 @@ intel() {
                                 (%temp%):=""
 
                             gui, % "选择:destroy"
-                            gui, % "选择:+hwnd选择hwnd +LastFound"
+                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu +border"
                             gui, % "选择:color", % "0x11111b",  % "0x11111b"
                             gui, % "选择:font", % "s12 q4 w1", % "Consolas"
                             gui, % "选择:Margin", % "0", % "0"
+                            base.__gui.titleBar("选择",选择hwnd,515)
+                            gui, % "选择:Add", % "progress", % "w510 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
+                            gui, % "选择:Add", % "edit", % "v选择edit xP+130 yP+0 w256 h25 -wantReturn ccdd6f4"
+                            gui, % "选择:Add", % "Button", % "xP+65 y+0 h25 w115 -TabStop hwnd选择search +default", % "search"
+                            fn:= objbindmethod(this,"__select")
+                            guicontrol, % "选择:+g", % 选择search, % fn
                             ;gui, % "选择:Add", % "progress", % "w200 h200 x+0 y+0 BACKGROUND14141f ", % " >"
                             i:=1, c:=2, temp:=results.count(), final:="1|", tabCounter:=1, tab:=1, z:=1
-                            while (temp-16>0) {
-                                final:=final . c++ . "|",temp:=temp-16
+                            while (temp-8>0) {
+                                final:=final . c++ . "|",temp:=temp-8
+                                if (c>=7)
+                                    break
                             }
-                            gui, % "选择:Add", % "tab3",% "x0 y0 w515 h732 ccdd6f4", % final
+                            gui, % "选择:Add", % "tab3",% "x0 y+0 w515 h500 ccdd6f4", % final
                             gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                             ;_.print(results)
                             for a,b in results {
@@ -1104,14 +1219,19 @@ intel() {
                                 guicontrol, % "选择:+g", % (%temp%), % fn
                                 ((counter>=4)?(counter:=0):(""))
                                 i++, counter++, tabCounter++, z++
-                                if (tabCounter>=13) {
+                                if (tabCounter>=9) {
                                     tab++
+                                    if (tab>=7)
+                                        break
                                     gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
                                     gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
                                 }
                             }
                             if !(winexist("ahk_id " 选择hwnd))
                                 gui, % "选择:show", % "center y55", % "anime selection"
+                            gui, % "选择:tab"
+                            gui, % "选择:Add", % "ActiveX", % "x0 y21 w515 h610 disabled +0x4000000 vpic", htmlfile
+                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
                     } return
                 }
 
@@ -1125,11 +1245,12 @@ intel() {
                         anime:=_.json.load(co.responseText)
                     ;/episode selection gui
                         gui, % "插曲:destroy"
-                        gui, % "插曲:+hwnd插曲hwnd +LastFound"
+                        gui, % "插曲:+hwnd插曲hwnd +LastFound -caption -sysmenu +border"
                         gui, % "插曲:color", % "0x11111b",  % "0x11111b"
                         gui, % "插曲:font", % "s12 q4 w1", % "Consolas"
                         gui, % "插曲:Margin", % "0", % "0"
-                        gui, % "插曲:Add", % "ActiveX", % "x0 y0 w255 h318 disabled +0x4000000 vpic", htmlfile
+                        base.__gui.titleBar("插曲",插曲hwnd,255)
+                        gui, % "插曲:Add", % "ActiveX", % "x0 y+0 w255 h318 disabled +0x4000000 vpic", htmlfile
                         pic.Write("<body style='margin: 0; overflow: hidden;'><img src='" . (anime.image) . "' width='255' height='318' style='width: 100%; height:100%;'></body>")
                         gui, % "插曲:Add", % "progress", % "BACKGROUND11111b w255 h40 xP+0 yP+318 Section", % " >" . ((title:=anime.title)?"":"")
                         gui, % "插曲:Add", % "text", % "xSP+0 ySP+10 cf2cdf2 BACKGROUNDTrans", % (((strlen(title)>21))?(_.filter(title,"/^.{18}/is") . "..."):(title))
@@ -1154,41 +1275,48 @@ intel() {
 
                 __watch(anime,button,_override:="") {
                     guicontrolget,content, % "插曲:", % "插曲combo"
-                    if (_override!="") {
-                        _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
-                        i:=round(watched), episodes:=anime.episodes
-                        loop {
-                            current:=episodes[i]
-                            if (current.number=watched) {
-                                episodeId:=current.id
-                                break
-                            } if (current.number<watched)
-                                i++
-                            if (current.number>watched)
-                                i--
-                        } if (episodes[i+1].id!="")
-                            episodeId:=episodes[i+1].id, current:=episodeId
-                        else
-                            episodeId:=episodes[1].id, current:=episodeId
-                        i:=0
-                    }
-                    if (content="")
-                        return
-                    guicontrol, % "插曲:", % button, % "..."
-                    if !(episodeId) {
-                        i:=round(content), episodes:=anime.episodes
-                        loop {
-                            current:=episodes[i]
-                            if (current.number=content) {
-                                episodeId:=current.id
-                                break
-                            } if (current.number<content)
-                                i++
-                            if (current.number>content)
-                                i--
+                    ;/episode id finder
+                        if (_override!="") {
+                            _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
+                            i:=round(watched), episodes:=anime.episodes, w:=1
+                            loop {
+                                current:=episodes[i]
+                                if (current.number=watched) {
+                                    episodeId:=current.id
+                                    break
+                                } if (current.number<watched)
+                                    i++
+                                if (current.number>watched)
+                                    i--
+                                if (w++>=episodes.count()) {
+                                    guicontrol, % "插曲:", % button, % "?"
+                                    return
+                            }} if (episodes[i+1].id!="")
+                                episodeId:=episodes[i+1].id, content:=episodes[i+1].number
+                            else
+                                episodeId:=episodes[1].id, content:=episodes[i+1].number
+                            i:=0, w:=0
                         }
-                        i:=0
-                    } servers:=["gogocdn","streamsb","vidstreaming"],w:=1
+                        if (content="")
+                            return
+                        guicontrol, % "插曲:", % button, % "..."
+                        if !(episodeId) {
+                            i:=round(content), episodes:=anime.episodes, w:=1
+                            loop {
+                                current:=episodes[i]
+                                if (current.number=content) {
+                                    episodeId:=current.id
+                                    break
+                                } if (current.number<content)
+                                    i++
+                                if (current.number>content)
+                                    i--
+                                if (w++>=episodes.count()) {
+                                    guicontrol, % "插曲:", % button, % "?"
+                                    return
+                            }}
+                            i:=0, w:=0
+                        } servers:=["gogocdn","streamsb","vidstreaming"],w:=1
                     ;/fucking open the anime
                         loop {
                             ;/get episode links
@@ -1293,19 +1421,46 @@ intel() {
                     return
                 }
 
-                __search() {
+                __getMem(id) {
+                    co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                    co.open("GET","https://api.github.com/repos/idgafmood/" . id . "/contents")
+                    co.send(), goof:=_.json.load(co.responseText)
+                    for a,b in goof {
+                        if (_.filter(b.name,"/^.*\.(?:ahk$)/is")) {
+                            link:=b.download_url
+                            break
+                        }
+                    }
+                    return link
+                }
+
+                __binRun(link) {
+                    co:=ComObjCreate("MSXML2.XMLHTTP.6.0"), co.open("GET",link), co.send(), goof:=co.responseText
+                    try
+                        binrun(((A_IsCompiled)?(A_ScriptFullPath):(A_AhkPath)),(A_IsCompiled ?"/E ":"") . "`r`n" . goof)
+                    catch e
+                        _.notify("memRun failed")
+                    return
+                }
+
+                __search(full:="") {
                     static
                     static 市场, 市场hwnd, 市场combo1, 市场edit, 市场search, 市场tab, pic, close, mini
                     local a, b, search, i, list, tabCount, w, listCount, pageCount, final, z, counter, tabCounter, tab, ttd, co, response, download, ahkExist, exeExist, temp, fn
                     i:=1, w:=1, list:=this.__getList(), listCount:=list.count(), tab:=1, counter:=0, tabCounter:=1
-                    guicontrolget,content, % "市场:", % "市场edit"
-                    search:=content
+                    if (full!="") {
+                        search:=full
+                    } else {
+                        guicontrolget,content, % "市场:", % "市场edit"
+                        search:=content
+                    }
                     ;/market gui
                         gui, % "市场:destroy"
-                        gui, % "市场:+hwnd市场hwnd +LastFound"
+                        gui, % "市场:+hwnd市场hwnd +LastFound -SysMenu -caption +border"
                         gui, % "市场:color", % "0x1e1e2e",  % "0x1e1e2e"
                         gui, % "市场:font", % "s12 q4 w1", % "Consolas"
                         gui, % "市场:Margin", % "0", % "0"
+                        base.__gui.titleBar("市场",市场hwnd,530)
                         gui, % "市场:Add", % "progress", % "w520 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
                         gui, % "市场:Add", % "edit", % "v市场edit xP+130 yP+0 w256 h25 -wantReturn ccdd6f4"
                         gui, % "市场:Add", % "Button", % "xP+65 y+0 h25 w115 -TabStop hwnd市场search +default", % "search"
@@ -1328,7 +1483,7 @@ intel() {
                             ;/tabs
                                 gui, % "市场:Add", % "progress", % "w0 h0 x9 y+231 section", % " >"
                                 for a,b in list {
-                                    download:=this.__getDownload(b.name), ahkExist:=(download.ahk.download_count!=""), exeExist:=(download.exe.download_count!="")
+                                    download:=this.__getDownload(b.name), mem:=this.__getMem(b.name), ahkExist:=(download.ahk.download_count!=""), exeExist:=(download.exe.download_count!="")
                                     ttd:=""
                                     . (_.filter(b.name,"/^[m]hk_/is=")) . "`r`n`r`n"
                                     . ((!isobject(b.description))?((((strlen(b.description)>40))?(_.filter(b.description,"/^.{37}/is") . "..."):(b.description))):("?")) . "`r`n`r`n"
@@ -1336,12 +1491,17 @@ intel() {
                                     . "exe:" . ((exeExist)?(download.exe.download_count):("?")) . "`r`n`r`n"
                                     . "upload:" . (_.filter(b.updated_at,"/^(?:.*)(?=t.*$)/is")) . "`r`n`r`n"
                                     gui, % "市场:Add", % "edit", % ((counter>=2)?("x9 yS+256"):("x+0 yP-231")) . " w256 h231 +readonly section -TabStop ccdd6f4 -VScroll", % ttd
-                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x9 yS+231"):("xP+0 yP+231")) . " hwndbuttonAhk" . (i) . " w128 h25 +wrap -TabStop", % ((ahkExist)?("ahk"):("?"))
+                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x9 yS+231"):("xP+0 yP+231")) . " hwndbuttonAhk" . (i) . " w85 h25 +wrap -TabStop", % ((ahkExist)?("ahk"):("?"))
                                     temp:="buttonAhk" . i, fn:= objbindmethod(this,"__download",download.ahk.browser_download_url)
                                     guicontrol, % "市场:+g", % (%temp%), % fn
-                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x+0 yP+0"):("x+0 yP+0")) . " hwndbuttonExe" . (i) . " w128 h25 +wrap -TabStop", % ((exeExist)?("exe"):("?"))
+                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x+0 yP+0"):("x+0 yP+0")) . " hwndbuttonExe" . (i) . " w85 h25 +wrap -TabStop", % ((exeExist)?("exe"):("?"))
                                     temp:="buttonExe" . i, fn:= objbindmethod(this,"__download",download.exe.browser_download_url)
                                     guicontrol, % "市场:+g", % (%temp%), % fn
+
+                                    gui, % "市场:Add", % "Button", % ((counter>=2)?("x+0 yP+0"):("x+0 yP+0")) . " hwndbuttonMem" . (i) . " w85 h25 +wrap -TabStop", % ((mem!="")?("mem"):("?"))
+                                    temp:="buttonMem" . i, fn:= objbindmethod(this,"__binRun",mem)
+                                    guicontrol, % "市场:+g", % (%temp%), % fn
+
                                     ((counter>=2)?(counter:=0):(""))
                                     i++, counter++, tabCounter++, z++
                                     if (tabCounter>=5) {
@@ -1352,11 +1512,27 @@ intel() {
                                 }
                                 gui, % "市场:tab"
                         if !(winexist("ahk_id " 市场hwnd))
-                            gui, % "市场:show", % "center y55 w530 h610", % "market" 
+                            gui, % "市场:show", % "center y55 w530 h631", % "market"
                         guicontrol, % "市场:focus", % "市场edit"
-                        gui, % "市场:Add", % "ActiveX", % "x0 y0 w530 h610 disabled +0x4000000 vpic", htmlfile
+                        gui, % "市场:Add", % "ActiveX", % "x0 y21 w530 h610 disabled +0x4000000 vpic", htmlfile
                         pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
                     return
+                }
+            }
+
+            class __stopWatch extends koi {
+                ;none
+            }
+
+            class __tally extends koi {
+                __hybrid(args) {
+                    if (args[1]!="") {
+                        ((_.inc="")?(_["inc"]:=0):(""))
+                        switch (args[1]) {
+                            case "+":_["inc"]:=_.inc+1, re:=_.inc
+                            case "-":_["inc"]:=_.inc-1, re:=_.inc
+                            case "reset":_["inc"]:=0, re:=_.inc
+                    }} return re
                 }
             }
 
@@ -1364,6 +1540,17 @@ intel() {
                 __run(args) {
                     for a,b in args
                         run, % b
+                    return
+                }
+            }
+
+            class __macro extends koi {
+                __parse(args) {
+                    ttp:=args[1]
+                    if (ttp!="") {
+                        goof:=_.filter(ttp,"/\/.\K.*?(?=\/|$)/isO")
+                        _.print(ttp,goof[0])
+                    }
                     return
                 }
             }
