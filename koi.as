@@ -1,6 +1,6 @@
 //koi.as//
 {
-  "version":"19",
+  "version":"20",
   "source":"https://github.com/idgafmood/mhk_koi/releases/download/%2B/koi_ahk.zip",
   "compiled":"https://github.com/idgafmood/mhk_koi/releases/download/%2B/koi_exe.zip",
   "passwords": [
