@@ -1,9 +1,11 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"17", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"35", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
     coordmode, % "Mouse", % "Screen"
+    if (base.__html5.fix())
+        reload
     koi.start()
     ;koi.__macro.__parse(["/ca/s{blind}{a down}/w+3/s{blind}{a up}/w+3/l/r"])
     /*
@@ -65,7 +67,6 @@ global $:=_.params({"1_keybind":"$^~LWin"})
 
 
 
-
     _.hotkey("$*~",$.1_keybind,objbindmethod(koi,"show"))
     _.hotkey("$*~","esc",objbindmethod(koi,"__close"))
     _.hotkey("$*","tab",objbindmethod(koi,"autoComplete"))
@@ -97,6 +98,7 @@ intel() {
 
 
 
+
 ;[ koi command palette
     class koi {
         ;/intellisense commands
@@ -104,6 +106,7 @@ intel() {
                 ,"clip save" ;save clip
                 ,"clip load" ;load clip
                 ,"clip clear" ;clear clip
+                ,"clip paste" ;paste clip
                 ,"cmd" ;terminal commands
                 ,">" ;mhk hybrid
                 ,"> reload" ;mhk reload
@@ -125,7 +128,8 @@ intel() {
                 ,"profile edit" ;edit profile
                 ,"profile import" ;import profiles from files/links
                 ,"profile export" ;export profiles to file
-                ,"profile startup"
+                ,"profile startup" ;set profile to load on start
+                ,"profile inherit" ;inherit profile keys
                 ,"version","koi","--version","-v" ;print server information
                 ,"help","?","--help","-h","-?" ;print all commands
                 ,"credits","--credits","-c" ;print credits
@@ -147,6 +151,10 @@ intel() {
                 ,"tally +" ;increment tally
                 ,"tally -" ;decrement tally
                 ,"tally reset" ;reset tally
+                ,"macro" ;simple macros
+                ,"patchNotes" ;patchnotes
+                ,"patchNotes latest" ;latest patchnotes
+                ,"report" ;report extension made into command
                 ,"quit"]
 
 
@@ -160,9 +168,216 @@ intel() {
 
 
             __resetCmds() {
-                return koi.cmds:=koi.__defaultCmds()
+                koi.cmds:=koi.__defaultCmds()
+                return
             }
 
+        ;/help
+            static helpObj:={"help":["`r`n"
+                    ," help, ?, --help, -h, -?: opens commands help"]
+                ,"version":["`r`n"
+                    ," version, koi, --version, -v: display koi version"]
+                ,"profile":["`r`n"
+                    ," profile [sub-cmd profile-name]: profile managment"
+                    ,"   - save   : save profile      | profile save 'name'"
+                    ,"   - load   : load profile      | profile load 'name'"
+                    ,"   - reset  : reset profile     | profile reset 'name'"
+                    ,"   - delete : delete profile    | profile delete 'name'"
+                    ,"   - view   : preview profile   | profile view 'name'"
+                    ,"   - edit   : edit profile      | profile edit 'name'"
+                    ,"   - import : import profile    | profile import 'name.json'"
+                    ,"                                | profile import 'link'"
+                    ,"   - export : export profile    | profile export 'name'"
+                    ,"   - inherit: inherit profile   | profile inherit 'name'"]
+                ,"clip":["`r`n"
+                    ," clip [sub-cmd clip-name]: multiple clipboard managment"
+                    ,"   - save   : save clipboard    | clip save 'name'"
+                    ,"   - load   : load clipboard    | clip load 'name'"
+                    ,"   - clear  : clear clipboard   | clip clear 'name'"
+                    ,"   -        : open clip mode    | clip"]
+                ,"bind":["`r`n"
+                    ," bind [sub-cmd command]: bind keys to koi command"
+                    ,"   - clear      : clear keybind's cmd       | bind clear '+q'"
+                    ,"   - (keybind)  : create keybind to run cmd | bind '+q' 'help'"]
+                ,"clearHistory":["`r`n"
+                    ," clearHistory, ch: clear koi command history"]
+                ,"clearBinds":["`r`n"
+                    ," clearBinds, cb: clear session binds"]
+                ,"clearClips":["`r`n"
+                    ," clearClips, cc: clear session clipboards"]
+                ,"cmd":["`r`n"
+                    ," cmd [command!]: execute windows batch command"]
+                ,"notify":["`r`n"
+                    ," notify [string*]: create custom notify menu"]
+                ,"print":["`r`n"
+                    ," print [string*]: print string"]
+                ,"alias":["`r`n"
+                    ," alias [sub-cmd alias-name content]: command redirecting"
+                    ,"   - save     : save alias    | alias save 'cmd' 'clip'"
+                    ,"   - clear    : clear alias   | alias clear 'cmd'"]
+                ,"quit":["`r`n"
+                    ," quit: close koi"]
+                ,"config":["`r`n"
+                    ," config, --config [commands*]: run commands on profile load"
+                    ,"   | config 'clearHistory' 'clearClips'"]
+                ,"ontop":["`r`n"
+                    ," ontop: create copy of window with special ontop properties"]
+                ,"screenShot":["`r`n"
+                    ," screenShot, ss: uses windows snip&sketch uwp for screenshotting"]
+                ,"anime":["`r`n"
+                    ," anime [anime-name!]: simple anime scraper"
+                    ,"   | anime big anime name"
+                    ,"   | anime"]
+                ,"cleanAnimeList":["`r`n"
+                    ," cleanAnimeList: remove finished anime from watched list"]
+                ,"market":["`r`n"
+                    ," market [search?!]: open mhk script market with optional search"
+                    ,"   | market"
+                    ,"   | market template"]
+                ,"run":["`r`n"
+                    ," run [command*]: windows run function"
+                    ,"   | run ``""`%userProfile`%\program.exe""``"]
+                ,"macro":["`r`n"
+                    ," macro [macro-syntax*]: create simple macros"
+                    ,"   | macro '\iahk_exe notepad.exe\s{a down}\:\s{a up}\r'"
+                    ,"   !EXTRA!"
+                    ,"      - \c    : _.clock()"
+                    ,"      - \s    : send"
+                    ,"      - \w    : _.when()"
+                    ,"      - \:    : _.wait()"
+                    ,"      - \r    : return"
+                    ,"      - \i    : if winactive()"
+                    ,"      - \l    : loop"
+                    ,"      - \p    : _.mouse.move()"
+                    ,"      - \q    : _.mouse.relative()"
+                    ,"      - \1    : left click down"
+                    ,"      - \2    : left click up"
+                    ,"      - \3    : right click down"
+                    ,"      - \4    : right click up"
+                    ,"      - \t    : koi:'clip paste [param]'"
+                    ,"      - \@    : bind toggle"
+                    ,"      - \m    : mouse block"
+                    ,"      - \!    : bind toggle insta break"
+                    ,"      - \z    : loop amount"
+                    ,"      - \+    : send original key after"
+                    ,"      - \-    : don't send original key after"]
+                ,"patchNotes":["`r`n"
+                    ," patchNotes: display patchnotes from dev"
+                    ,"   | patchNotes latest"
+                    ,"   | patchNotes 1"]
+                ,"report":["`r`n"
+                    ," report [message!]: directly message script owner (me)"
+                    ,"   | report big non string message here"]
+                ,"":""}
+
+            static helpAliases:={"?":"help"
+                ,"--help":"help"
+                ,"-h":"help"
+                ,"-?":"help"
+                ,"koi":"version"
+                ,"--version":"version"
+                ,"-v":"version"
+                ,"ch":"clearHistory"
+                ,"cb":"clearBinds"
+                ,"cc":"clearClips"
+                ,"--config":"config"
+                ,"ss":"screenShot"}
+
+        ;/patchNotes
+            static patchObj:={"1":["`r`n"
+                    ," v1"
+                    ,"  - first beta"]
+                ,"18":["`r`n"
+                    ," v18"
+                    ,"  - added patchnotes command"
+                    ,"  - added macros finally"
+                    ,"  - made custom titlebar for guis"
+                    ,"  - anime gui update"
+                    ,"  - anime search gui has search bar now"
+                    ,"  - changed how the help command works"
+                    ,"  - added run from memory option to mhk market"]
+                ,"19":["`r`n"
+                    ," v19"
+                    ,"  - fixed issue with anime gui"]
+                ,"20":["`r`n"
+                    ," v20"
+                    ,"  - added search bar to preview anime gui"
+                    ,"  - fixed non visible gui issue with anime command"
+                    ,"  - added clip send command"
+                    ,"  - added permanent links for custom gui elements"
+                    ,"  - added mouse movement class to macro command"
+                    ,"  - added mouse click dll calls to macro command"
+                    ,"  - added clip send to macro command"
+                    ,"  - adjusted syntax for macros"]
+                ,"21":["`r`n"
+                    ," v21"
+                    ,"  - toggle macros added (\:\@)"]
+                ,"22":["`r`n"
+                    ," v22"
+                    ,"  - fixed issue with relative mouse movement macro command (\q)"]
+                ,"23":["`r`n"
+                    ," v23"
+                    ,"  - added mouse block to macro command"
+                    ,"  - changed how toggle works in macro command"]
+                ,"24":["`r`n"
+                    ," v24"
+                    ,"  - fixed issue with panels and notify"
+                    ,"  - fixed startup goofing macros"
+                    ,"  - changed how 'when' works inside macros"
+                    ,"  - added early stop to macros command"
+                    ,"  - macros are now consistent on profile changes"]
+                ,"25":["`r`n"
+                    ," v25"
+                    ,"  - added send original to macro command"
+                    ,"  - added dont send original to macro command"
+                    ,"  - added loop amount to macro command"
+                    ,"  - added toggle bind insta break to macro command"]
+                ,"26":["`r`n"
+                    ," v26"
+                    ,"  - fixed bug with macros \z flag"]
+                ,"27":["`r`n"
+                    ," v27"
+                    ,"  - fixed bug with macros \z flag bu really this time"]
+                ,"28":["`r`n"
+                    ," v28"
+                    ,"  - fixed issue with binds not clearing"
+                    ,"  - binds nolonger add to history :P"
+                    ,"  - updated mhk library"]
+                ,"29":["`r`n"
+                    ," v29"
+                    ,"  - added profile inherit"
+                    ,"  - profile command had issue with being too fast, slowed down"
+                    ,"  - synced up profile loading in the background"]
+                ,"30":["`r`n"
+                    ," v30"
+                    ,"  - fixed issue with anime preview gui not displaying tabs"]
+                ,"31":["`r`n"
+                    ," v31"
+                    ,"  - fixed anime preview gui displaying too many tabs"
+                    ,"  - changed how anime math works"
+                    ,"  - watching previously watched anime episodes updates list now"]
+                ,"32":["`r`n"
+                    ," v32"
+                    ,"  - overhauled anime search and preview gui (experimental)"
+                    ,"  - empty search bar in anime guis brings you to preview now"
+                    ,"  - added report command lmao (pings me on discord with message)"]
+                ,"33":["`r`n"
+                    ," v33"
+                    ,"  - fixed MAJOR issue with aliases not fucking working"
+                    ,"  - aliases are now much faster"
+                    ,"  - submitting a command is more consistent"
+                    ,"  - koi is now distributed in 64bit"
+                    ,"  - koi is now ahk_h thread (don't worry if you run a .exe)"
+                    ,"  - tweaked anime guis to not show white space below sub gui"
+                    ,"  - ! market mem scripts directories are fucked"
+                    ,"  - ! use ""report"" to send me bug related issues"]
+                ,"34":["`r`n"
+                    ," v34"
+                    ,"  - aliases actually work this time lmfao"]
+                ,"35":["`r`n"
+                    ," v35"
+                    ,"  - revamped entire anime gui"
+                    ,"  - not all of the anime gui is done yet so favoriting isn't done and the in-built episode isn't done"]}
         ;/panels
             ;[ version panel
                 static versionPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
@@ -191,71 +406,7 @@ intel() {
                                 ," |                     |_| |_|\___|_| .__/                     | "
                                 ," |                                  | |                        | "
                                 ," V                                  |_|                        V "
-                                ," _______________________________________________________________ "
-                                ,""
-                                ," help, ?, --help, -h, -?: opens commands help"
-                                ,"`r`n"
-                                ," version, koi, --version, -v: display koi version"
-                                ,"`r`n"
-                                ," profile [sub-cmd profile-name]: profile managment"
-                                ,"   - save   : save profile      | profile save 'name'"
-                                ,"   - load   : load profile      | profile load 'name'"
-                                ,"   - reset  : reset profile     | profile reset 'name'"
-                                ,"   - delete : delete profile    | profile delete 'name'"
-                                ,"   - view   : preview profile   | profile view 'name'"
-                                ,"   - edit   : edit profile      | profile edit 'name'"
-                                ,"   - import : import profile    | profile import 'name.json'"
-                                ,"                                | profile import 'link'"
-                                ,"   - export : export profile    | profile export 'name'"
-                                ,"`r`n"
-                                ," clip [sub-cmd clip-name]: multiple clipboard managment"
-                                ,"   - save   : save clipboard    | clip save 'name'"
-                                ,"   - load   : load clipboard    | clip load 'name'"
-                                ,"   - clear  : clear clipboard   | clip clear 'name'"
-                                ,"   -        : open clip mode    | clip"
-                                ,"`r`n"
-                                ," bind [sub-cmd command]: bind keys to koi command"
-                                ,"   - clear      : clear keybind's cmd       | bind clear '+q'"
-                                ,"   - (keybind)  : create keybind to run cmd | bind '+q' 'help'"
-                                ,"`r`n"
-                                ," clearHistory, ch: clear koi command history"
-                                ,"`r`n"
-                                ," clearBinds, cb: clear session binds"
-                                ,"`r`n"
-                                ," clearClips, cc: clear session clipboards"
-                                ,"`r`n"
-                                ," cmd [command!]: execute windows batch command"
-                                ,"`r`n"
-                                ," notify [string*]: create custom notify menu"
-                                ,"`r`n"
-                                ," print [string*]: print string"
-                                ,"`r`n"
-                                ," alias [sub-cmd alias-name content]: command redirecting"
-                                ,"   - save     : save alias    | alias save 'cmd' 'clip'"
-                                ,"   - clear    : clear alias   | alias clear 'cmd'"
-                                ,"`r`n"
-                                ," quit: close koi"
-                                ,"`r`n"
-                                ," config, --config [commands*]: run commands on profile load"
-                                ,"   | config 'clearHistory' 'clearClips'"
-                                ,"`r`n"
-                                ," ontop: create copy of window with special ontop properties"
-                                ,"`r`n"
-                                ," screenShot, ss: uses windows snip&sketch uwp for screenshotting"
-                                ,"`r`n"
-                                ," anime [anime-name!]: simple anime scraper (ignores string syntax)"
-                                ,"   | anime big anime name"
-                                ,"   | anime"
-                                ,"`r`n"
-                                ," cleanAnimeList: remove finished anime from watched list"
-                                ,"`r`n"
-                                ," market [search?]: open mhk script market with optional search"
-                                ,"   | market"
-                                ,"   | market 'template'"
-                                ,"`r`n"
-                                ," run [command*]: windows run function"
-                                ,"   | run ``""`%userProfile`%\program.exe""``"
-                                ,""]
+                                ," _______________________________________________________________ "]
             ;]
             ;[ credits panel
                 static creditsPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
@@ -294,37 +445,51 @@ intel() {
             ;]
             ;[ info panel
                 static infoPanel=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
-                ;,"                                                                 "
-                ,"                         _        __                             "
-                ,"                        (_)      / _|                            "
-                ," |                       _ _ __ | |_ ___                       | "
-                ," |                      | | '_ \|  _/ _ \                      | "
-                ," |                      | | | | | || (_) |                     | "
-                ," V                      |_|_| |_|_| \___/                      V "
-                ," _______________________________________________________________ "
-                ,"`r`n"
-                ,"    koi is a command palette emulator taking inspiration from    "
-                ,"     many game 'commands' and common notions from terminals.     "
-                ,"`r`n"
-                ,"   the script itself mainly abuses regex to emulate compilers,   "
-                ,"   the important concepts of koi commands is strings, escaping   "
-                ,"   and the multiple-command operator. Examples shown below -->   "
-                ,""
-                ,"   strings: profile save ""some name""                             "
-                ,"   escaping: profile load ""weird n\""ame""                         "
-                ,"   mco: profile load name;notify 'profile; loaded'               "
-                ,""
-                ,"   some notes; in strings the only escape sequences that works   "
-                ,"   is the current string type. If you use single quotes  ( ' )   "
-                ,"   you will only need to escape that character with:   ( \' ).   "
-                ,""
-                ,"   there is three types of valid strings: double quote ( "" ),   "
-                ,"            single quote ( ' ) and back-quote ( `` ).            "
-                ,"`r`n"
-                ,"   all of these concepts are meant to be very simple to learn,   "
-                ,"    many other operators/concepts could be added but it would    "
-                ,"        also increase the complexity so they arent added.        "
-                ,""]                       
+                    ;,"                                                                 "
+                    ,"                         _        __                             "
+                    ,"                        (_)      / _|                            "
+                    ," |                       _ _ __ | |_ ___                       | "
+                    ," |                      | | '_ \|  _/ _ \                      | "
+                    ," |                      | | | | | || (_) |                     | "
+                    ," V                      |_|_| |_|_| \___/                      V "
+                    ," _______________________________________________________________ "
+                    ,"`r`n"
+                    ,"    koi is a command palette emulator taking inspiration from    "
+                    ,"     many game 'commands' and common notions from terminals.     "
+                    ,"`r`n"
+                    ,"   the script itself mainly abuses regex to emulate compilers,   "
+                    ,"   the important concepts of koi commands is strings, escaping   "
+                    ,"   and the multiple-command operator. Examples shown below -->   "
+                    ,""
+                    ,"   strings: profile save ""some name""                             "
+                    ,"   escaping: profile load ""weird n\""ame""                         "
+                    ,"   mco: profile load name;notify 'profile; loaded'               "
+                    ,""
+                    ,"   some notes; in strings the only escape sequences that works   "
+                    ,"   is the current string type. If you use single quotes  ( ' )   "
+                    ,"   you will only need to escape that character with:   ( \' ).   "
+                    ,""
+                    ,"   there is three types of valid strings: double quote ( "" ),   "
+                    ,"            single quote ( ' ) and back-quote ( `` ).            "
+                    ,"`r`n"
+                    ,"   all of these concepts are meant to be very simple to learn,   "
+                    ,"    many other operators/concepts could be added but it would    "
+                    ,"        also increase the complexity so they arent added.        "
+                    ,""]                       
+            ;]
+            ;[ patchNotes panel
+                static patchPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
+                    ;,"                                                                 "
+                    ,"                                _       _                        "
+                    ,"                               | |     | |                       "
+                    ,"                    _ __   __ _| |_ ___| |__                     "
+                    ,"                   | '_ \ / _`` | __/ __| '_ \                    "
+                    ," |                 | |_) | (_| | || (__| | | |                 | "
+                    ," |                 | .__/ \__,_|\__\___|_| |_|                 | "
+                    ," |                 | |                                         | "
+                    ," V                 |_|                                         V "
+                    ," _______________________________________________________________ "
+                    ,""]
             ;]
 
         ;/default data
@@ -334,30 +499,29 @@ intel() {
         static intelColors:=["f2cded","d1b1cc","e8b0df","ce9cc7","e9cbef","d0b6d6","ddb0e8","c59cce","e1cbef","beadc9"]
 
         ;@ submit command
-        __submit(_override:="",_isAlias:="") {
+        __submit(_override:="",_isAlias:="",_isBind:="") {
             ;_.clock()
             ;/get palettes contents and handle special occasions
                 guicontrolget,content, % "锦鲤:", % "锦鲤编辑"
-                if (_override!="") {
+                if (_override!="")
                     content:=_override
+                if (_isBind!="") {
                     if (winactive("ahk_id " this.hwnd)) {
                         _.wait()
                         return
-                    }
-                } ;this.__submit()
-                if (((content="") && (winactive("ahk_id " this.hwnd))) || (content="nil")) {
+                }} if (((content="") && (winactive("ahk_id " this.hwnd))) || (content="nil")) {
                     _.wait()
                     return
                 }
-                if (_isAlias="") {
+                if ((_isAlias="")&&(_isBind="")) {
                     history:=_.reg.get("history")
-                    PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
                     history.push(content)
                     if (history.length()>=21)
                         history.removeat(1,1)
                     this.historyI:=history.length()+1
                     _.reg.set("history",history)
-                }
+                } if (_isBind="")
+                    PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
 
             ;/find each comment inside command
                 tempcommand:=content,final:=[],finalPos:=[],fullLine:=content
@@ -394,11 +558,11 @@ intel() {
                         } ;_.print("cmd    : " . cmd,args,"//")
                         ;time4:=_.stamp
                         switch (cmd) {
-                            default: (((_isAlias=cmd))?(_.print(cmd . " : you're not allowed to create an infinite alias, that would crash your computer")):(((tp_)?(""):(tp_:=this._profiles)), ((tp_.session.aliases.haskey(cmd))?(re:=this.__submit(tp_.session.aliases[cmd] . " " . full,cmd)):(""))))
+                            default: ((_isAlias=cmd)?(_.print(cmd . " : you're not allowed to create an infinite alias, that would crash your computer")):(((this.tp_.haskey(cmd))?(re:=this.__submit(this.tp_[cmd] . " " . full,cmd,((_isBind!="")?(_isBind):("")))):(""))))
                             case "clip": this.__clip.clip(args)
                             case "cmd": _.cmd(full)
                             case ">": this.__mhk.mhk(args)
-                            case "bind": this.makeBind(args)
+                            case "bind": this.makeBind(args,_isBind)
                             ;[ clearing
                                 case "clearHistory","ch": this.__clearHistory()
                                 case "clearBinds","cb": this.clearBind()
@@ -407,7 +571,7 @@ intel() {
                             ;]
                             case "profile": temp1:=this.__profile.handler(args), ((isobject(temp1))?(re:=_.json.dump(temp1,1)):"")
                             case "version","koi","--version","-v": re:=this.versionPanel
-                            case "help","?","--help","-h","-?": re:=this.helpPanel
+                            case "help","?","--help","-h","-?": re:=this.__genHelpPanel(args)
                             case "credits","--credits","-c": re:=this.creditsPanel
                             case "notify": re:=args
                             case "print": _.print(args*)
@@ -417,35 +581,31 @@ intel() {
                             case "win": this.__win.handler(args)
                             case "ontop": ((winexist("A"))?(_.ontop.instance({"windowId":winexist("A"),"chromeOff":"nil","size":"640,640"})):(""))
                             case "screenShot","ss": run, % "explorer ""ms-screenclip:edit?source=AHK&"""
-                            case "anime": goof:=this.__anime.__select(full), ((goof!="")?(re:=goof):(""))
+                            case "anime": re:=this.__anime.__input({"full":full,"re":"","type":"search"})
                             case "cleanAnimeList": re:=this.__anime.__clean()
                             case "market": re:=this.__market.__search(full)
                             case "run": re:=this.__windows.__run(args)
                             case "info","--info","-f": re:=this.infoPanel
-                            case "tally":re:=this.__tally.__hybrid(args)
+                            case "tally": re:=this.__tally.__hybrid(args)
+                            case "macro": re:=this.__macro.__parse(args,_isBind)
+                            case "patchNotes": re:=this.__genPatchPanel(args)
+                            case "report": re:=this.report(full)
+                            case "market2": re:=this.__market2.__search(full)
+                            case "anime2": re:=this.__anime2.__input({"full":full,"re":"","type":"search"})
                         }
                 }
             ;_.print(time4)
+            ;_.print("return: ",re,"//")
             if (_isAlias!="") {
-                _.wait()
                 return re
-            } this.__close()
+            }
+            this.__close()
             if isobject(re) {
                 _.notify(re*)
             } else if (re!="") {
                 _.notify(re)
             } _.wait()
             return
-        }
-
-
-        ;@ unparses args
-        __unparse(args) {
-            if !(isobject(args))
-                return 0
-            for a,b in ((final:="")?"":(args))
-                final:=final . b . " "
-            return final
         }
 
         ;@ close koi
@@ -584,7 +744,7 @@ intel() {
                 history:=[],_.reg.set("history",[])
             this.historyI:=history.count()+1
 
-            this.versionPanel.push("version: " . _.server.version)
+            this.versionPanel.push("version: " . _.info.version . "`r`n")
             profiles:=_.reg.get("profiles"), ((isobject(profiles.default)&&isobject(profiles.session))?():(profiles:={"_profile":"default",session:this.__default(),default:this.__default()}))
             defaultData:=this.__default()
             for a,b in profiles[profiles._profile]
@@ -592,15 +752,18 @@ intel() {
             session:=profiles.session
             for a,b in defaultData
                 ((session.haskey(a))?(continue):(profiles.session[a]:=b))
+            _.reg.set("profiles",profiles)
             for a,b in session.binds
-                _.hotkey("$*~",a,objbindmethod(this,"__submit",b))
-            this.__resetCmds(), temp:=[]
-            for a,b in session.aliases
-                temp.push(a)
-            this.cmds.bump(temp)
+                _.hotkey("$*~",a,objbindmethod(this,"__submit",b,"",1))
+            c:={}, d:=[], this.__resetCmds()
+            for a,b in session.aliases {
+                if (this.cmds.hasvalue(a))
+                    continue
+                c[a]:=b, d.push(a)
+            } this.cmds.bump(d), this["tp_"]:={}, this.tp_.bump(c)
+            _.sleep("15")
             if (session.config!="")
                 this.__submit(session.config)
-            _.reg.set("profiles",profiles)
             return
             ;$ _p:=_.reg.get("profiles"),prof:=_p[_p._profile]
             ;$ _p:=_.reg.get("profiles"),prof:=_p.session
@@ -667,6 +830,57 @@ intel() {
             return
         }
 
+        __genHelpPanel(args) {
+            final:=[]
+            for a,b in this.helpPanel
+                final.push(b)
+            if (args.count()>0) {
+                for a,b in args {
+                    if (this.helpAliases.haskey(b)) {
+                        current:=this.helpAliases[b]
+                    } else {
+                        current:=b
+                    } for c,d in this.helpObj {
+                        if ((isobject(d))&&(c=current))
+                            final.bump(d)
+                    }
+                }
+            } else {
+                for a,b in this.helpObj {
+                    if (isobject(b))
+                        final.bump(b)
+                }
+            } final.push("`r`n")
+            return final
+        }
+
+        __genPatchPanel(args) {
+            temp:=[], final:=[]
+            for a,b in this.patchPanel
+                final.push(b)
+            if (args.count()>0) {
+                for a,b in args {
+                    if (b="latest") {
+                        current:=_.info.version
+                    } else {
+                        current:=b
+                    } for c,d in this.patchObj {
+                        if ((isobject(d))&&(c=current))
+                            temp.push(d)
+                }}
+            } else {
+                for a,b in this.patchObj {
+                    if (isobject(b))
+                        temp.push(b)
+                }
+            }
+            loop {
+                final.bump(temp.pop())
+            } until (temp.count()<=0)
+            final.push("`r`n")
+            return final
+        }
+
         class __gui extends koi {
             titleBar(id,hwnd,width) {
                 local
@@ -677,7 +891,7 @@ intel() {
                 guicontrol, % id . ":+g", % drag, % fn
                 gui, % id . ":Add", % "progress", % "wp hp xP+0 yP+0 BACKGROUND11111b section", % " >"
                 gui, % id . ":Add", % "ActiveX", % "xS+" . (barSize+1) . " yS+0 w109 h20 disabled +0x4000000 vpic", htmlfile
-                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1122936013082337421/buttons4.png' width='109' height='20' style='width: 100%; height:100%;'></div></body>")
+                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/buttons4.png' width='109' height='20' style='width: 100%; height:100%;'></div></body>")
 
                 gui, % id . ":add", % "text", % "w21 h21 xS+" . (barSize+1) . " yP+0 BACKGROUNDTrans hwndmini 0x201", % "-"
                 fn:=objbindmethod(this,"__minimize",hwnd)
@@ -712,6 +926,17 @@ intel() {
             __drag(hwnd) {
                 SendMessage 0xA1,2,,, % "ahk_id " . hwnd
                 return
+            }
+        }
+
+        class __html5 extends koi {
+            fix() {
+                static regKey := "HKCU\Software\Microsoft\Internet Explorer\MAIN\FeatureControl\FEATURE_BROWSER_EMULATION"
+                SplitPath, % A_IsCompiled ? A_ScriptFullPath : A_AhkPath, exeName
+                RegRead, value, % regKey, % exeName
+                if (value != 11000)
+                   RegWrite, REG_DWORD, % regKey, % exeName, 11000
+                Return !ErrorLevel
             }
         }
 
@@ -804,6 +1029,15 @@ intel() {
                             } case "clear": {
                                 if (args[2]!="")
                                     clipList.delete(args[2])
+                            } case "paste": {
+                                if (args[2]!="") {
+                                    tempClip:=ClipboardAll
+                                    clipboard:=clipList[args[2]]
+                                    send, % "^v"
+                                    _.sleep("2")
+                                    clipboard:=tempClip
+                                }
+
                         }} _.reg.set("profiles",_p)
                     } else {
                         this.__start()
@@ -821,51 +1055,56 @@ intel() {
 
             class __profile extends koi {
                 handler(args) {
-                    ;_p:=_.reg.get("profiles")
+                    _p:=_.reg.get("profiles")
                     for a,b in _p.session.binds
-                        _.hotkey("$*~",a,objbindmethod(this,"__submit"),"off")
+                        _.hotkey("$*~",a,objbindmethod(koi,"__submit"),"off")
                     switch (args[1]) {
                         default: {
-                            temp:=this.hybrid(args), final:=temp[1], load:=temp[2]
+                            temp:=this.hybrid({"args":args,"_p":_p}), final:=temp[1], load:=temp[2]
                         } case "save": {
-                            final:=this.save(args)
+                            final:=this.save({"args":args,"_p":_p})
                         } case "load": {
-                            final:=this.load(args), load:="load"
+                            final:=this.load({"args":args,"_p":_p}), load:="load"
                         } case "reset": {
-                            final:=this.reset(args)
+                            final:=this.reset({"args":args,"_p":_p})
                         } case "delete": {
-                            final:=this.delete(args)
+                            final:=this.delete({"args":args,"_p":_p})
                         } case "view": {
-                            temp:=this.view(args), final:=temp[1], re:=temp[2]
+                            temp:=this.view({"args":args,"_p":_p}), final:=temp[1], re:=temp[2]
                         } case "edit": {
-                            final:=this.edit(args),
+                            final:=this.edit({"args":args,"_p":_p}),
                         } case "import": {
-                            final:=this.import(args)
+                            final:=this.import({"args":args,"_p":_p})
                         } case "export": {
-                            final:=this.export(args)
+                            final:=this.export({"args":args,"_p":_p})
                         } case "startup": {
-                            final:=this.startup(args)
-                    }} c:=[], base.__resetCmds()
+                            final:=this.startup({"args":args,"_p":_p})
+                        } case "inherit": {
+                            final:=this.inherit({"args":args,"_p":_p}), load:="load"
+                    }} c:={}, d:=[], base.__resetCmds()
+                    _.reg.set("profiles",final)
                     for a,b in final.session.aliases {
-                        if (final.session.aliases.hasvalue(a))
+                        if (base.cmds.hasvalue(a))
                             continue
-                        c.push(a)
+                        c[a]:=b, d.push(a)
                     }
-                    base.cmds.bump(c)
+                    base.cmds.bump(d), base["tp_"]:={}, base.tp_.bump(c)
                     for a,b in final.session.binds
-                        _.hotkey("$*~",a,objbindmethod(this,"__submit",b),"on")
-                    temp:=[]
-                    for a,b in final.session.aliases
-                        temp.push(a)
-                    base.__resetCmds(), base.cmds.bump(temp)
-                    if ((final.session.config!="")&&(load="load"))
+                        _.hotkey("$*~",a,objbindmethod(koi,"__submit",b,"",1),"on")
+                    ;temp:=[]
+                    ;for a,b in final.session.aliases
+                    ;    temp.push(a)
+                    ;base.__resetCmds(), base.cmds.bump(temp)
+                    _.sleep("15")
+                    if ((final.session.config)&&(load!=""))
                         base.__submit(final.session.config)
                     return ((re)?(re):"")
                 }
 
                 ;{ profile commands
-                    hybrid(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    hybrid(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[1]!="")&&(args[1]!="_profile")) {
                                 if (_p.haskey(args[1]))
                                     _p.session:=_p[args[1]], re:="load"
@@ -875,70 +1114,70 @@ intel() {
                                 _p[_p._profile]:=_p.session, re:="save"
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return [_p,re]
                     }
         
-                    save(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    save(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p[args[2]]:=_p.session
                             } else {
                                 _p[_p._profile]:=_p.session
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
         
-                    load(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    load(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p.session:=_p[args[2]]
                             } else {
                                 _p.session:=_p[_p._profile]
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
         
-                    reset(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    reset(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 _p[args[2]]:=this.__default()
                             } else {
                                 _p[_p._profile]:=this.__default()
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
         
-                    delete(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    delete(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="session")&&(args[2]!="default")&&(args[2]!="_profile")) {
                                 _p.delete(args[2])
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
         
-                    view(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    view(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 re:=_p[args[2]]
                             } else {
                                 re:=_p
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return [_p,re]
                     }
         
-                    edit(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    edit(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
                                 if !(isobject(_p[args[2]]))
                                     _p[args[2]]:=this.__default()
@@ -947,12 +1186,12 @@ intel() {
                                 _p:=_.file.edit(_p)
                             }
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
 
-                    import(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    import(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             _file:=args[2]
                             if (fileexist(_file)) {
                                 content:=_.file.read(_file), loaded:=_.json.load(content), name:=(_.filter(_file,"/^(?:.*(?:\\))?\K.*(?=\..*$)/is")) ;https://regex101.com/r/P6n2GY/1
@@ -964,28 +1203,46 @@ intel() {
                             } if (name!="")&&(name!="_profile")
                                 _p[name]:=loaded
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
 
-                    export(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    export(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="") && (args[2]!="_profile"))
                                 name:=args[2] . ".json", _.file.write(name,_.json.dump(_p[args[2]],1))
                             else 
                                 name:=_p["_profile"] . ".json", _.file.write(name,_.json.dump(_p[_p["_profile"]],1))
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
                     }
 
-                    startup(args) {
-                        _p:=_.reg.get("profiles") ;[
+                    startup(obj) {
+                        args:=obj.args,_p:=obj._p
+                        ;[
                             if ((args[2]!="") && (args[2]!="_profile"))
                                 _p["_profile"]:=args[2]
                         ;]
-                        _.reg.set("profiles",_p)
                         return _p
+                    }
+
+                    inherit(obj) {
+                        args:=obj.args,_p:=obj._p,final:=_p
+                        ;_.print(args,_p)
+                        ;[
+                            if ((args[2]!="") && (args[2]!="_profile")) {
+                                for a,b in _p[args[2]] {
+                                    ;_.print(a,b,"//")
+                                    if (isobject(b)) {
+                                        final.session[a].bump(b)
+                                    } else {
+                                        final.session[a]:=b
+                                    }
+                                }
+
+                            }
+                        ;]
+                        return final
                     }
                 ;} /
             }
@@ -1065,10 +1322,12 @@ intel() {
                                     _p.session.aliases[args[2]]:=args[3]
                                 }
                         }}
-                        temp:=[]
-                        for a,b in _p.session.aliases
-                            temp.push(a)
-                        base.__resetCmds(), base.cmds.bump(temp)
+                        c:={}, d:=[], base.__resetCmds()
+                        for a,b in _p.session.aliases {
+                            if (base.cmds.hasvalue(a))
+                                continue
+                            c[a]:=b, d.push(a)
+                        } base.cmds.bump(d), base["tp_"]:={}, base.tp_.bump(c)
                         _.reg.set("profiles",_p)
                     }
                     return
@@ -1095,79 +1354,25 @@ intel() {
                 }
             }
 
-            class __anime extends koi {
-                __select(full:="") {
+            class __animeOld extends koi {
+                __select(full:="",re:="") {
                     static
-                    static 选择, 选择hwnd, pic
-                    local name, co, payload, response, results, i, temp, counter, w, final, c, tabCounter, tab, buttonText, fn, a, b, animeList, watched, episodesWatched, episodesWatchedTemp, z, isDub, l
-                    counter:=0
-                    guicontrolget,content, % "选择:", % "选择edit"
-                    if (content="") {
-                        if (winexist("ahk_id " 选择hwnd))
-                            return "selection already open"
-                    } else {
-                        full:=content
-                    }
-                    if (full=""||full=" ") {
-                        ;/get recent animes
+                    static 边界, 边界hwnd, 选择, 选择hwnd, pic
+                    local watched, animeList, episodesWatched, results, l, i, z, w, co, name, payload, response, a, b, c, d, final, orginX, orginY, orginW, orginH, counter, buttonText, isDub, _anime
+                    ;/get animeList
+                        guicontrolget,content, % "边界:", % "边界edit"
+                        if (winexist("ahk_id " 边界hwnd)) {
+                            if (content!="")
+                                full:=content
+                        }
+                        if (full=""||_.filter(full,"/^\s+(?=$)/is")) {
                             watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
                             for a,b in watched {
                                 co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                                 co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
                                 co.send(), animeList.push(_.json.load(co.responseText)), episodesWatched.push(b)
                             }
-                            ;_.print(animeList)
-                        ;/preview gui
-                            w:=0, i:=1, final:="1|", tabCounter:=1, tab:=1, c:=2, z:=1
-                            while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
-                                (%temp%):=""
-                            gui, % "选择:destroy"
-                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu +border"
-                            gui, % "选择:color", % "0x11111b",  % "0x11111b"
-                            gui, % "选择:font", % "s12 q4 w1", % "Consolas"
-                            gui, % "选择:Margin", % "0", % "0"
-                            base.__gui.titleBar("选择",选择hwnd,515)
-                            gui, % "选择:Add", % "progress", % "w510 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
-                            /*
-                            animeList[1].id
-                            animeList[1].image
-                            animeList[1].totalEpisodes
-                            */
-                            while (temp-8>0) {
-                                final:=final . c++ . "|",temp:=temp-8
-                                if (c>=7)
-                                    break
-                            }
-                            gui, % "选择:Add", % "tab3",% "x0 y+0 w515 h500 ccdd6f4", % final
-                            gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
-                            for a,b in animeList {
-                                if (episodesWatched[z]>=b.totalEpisodes) {
-                                    z++
-                                    continue
-                                }
-                                temp:="pic" . i
-                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x4 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
-                                (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"),buttonText:=((b.title!="")?("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.title):("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") " . b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
-                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x4 yS+394"):("xP+0 yP+159")) . " hwndbutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
-                                temp:="button" . i, fn:= objbindmethod(this,"__episode",b.id)
-                                guicontrol, % "选择:+g", % (temp), % fn
-                                ;_.print(b.id)
-                                i++, counter++, tabCounter++, z++
-                                if (tabCounter>=13) {
-                                    tab++
-                                    if (tab>=7)
-                                        break
-                                    gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
-                                    gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
-                                }
-                            }
-                            if !(winexist("ahk_id " 选择hwnd))
-                                gui, % "选择:show", % "center y55", % "anime selection"
-                            gui, % "选择:tab"
-                            gui, % "选择:Add", % "ActiveX", % "x0 y21 w515 h610 disabled +0x4000000 vpic", htmlfile
-                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
-                    } else {
-                        ;/search
+                        } else {
                             watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], results:=[], l:=1
                             name:=_.filter(full,"/\ /is=-")
                             loop {
@@ -1176,63 +1381,73 @@ intel() {
                                 co.open("GET",payload)
                                 co.send()
                                 response:=_.json.load(co.responseText)
-                                results.bump(response.results)
+                                animeList.bump(response.results)
                                 l++
                                 if !(response.hasNextPage) || (l>=4)
                                     break
-                            }
-                            if (response.results.count()<=0)
+                            } if (response.results.count()<=0) {
+                                if (re!="")
+                                    _.notify("anime not found")
                                 return "anime not found"
+                            }
+                        }
 
-                        ;/search gui
-                            w:=0
-                            while (w?(w++?"":""):((w:=1)?"":"")) . ((temp:="pic" . w)?"":"") . (isobject((%temp%)))
-                                (%temp%):=""
+                    ;/anime border gui
+                        if !(this.borderGui) {
+                            ;/边界
+                                gui, % "边界:destroy"
+                                gui, % "边界:+hwnd边界hwnd +LastFound -caption -sysmenu +border"
+                                gui, % "边界:color", % "0x11111b",  % "0x11111b"
+                                gui, % "边界:font", % "s12 q4 w1", % "Consolas"
+                                gui, % "边界:Margin", % "0", % "0"
+                                base.__gui.titleBar("边界",边界hwnd,515)
+                                gui, % "边界:Add", % "progress", % "w510 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
+                                gui, % "边界:Add", % "edit", % "v边界edit xP+130 yP+0 w256 h25 -wantReturn ccdd6f4"
+                                gui, % "边界:Add", % "Button", % "xP+65 y+0 h25 w115 -TabStop hwnd边界search +default", % "search"
+                                fn:= objbindmethod(this,"__select","",1)
+                                guicontrol, % "边界:+g", % 边界search, % fn
+                                gui, % "边界:Add", % "ActiveX", % "x0 y21 w515 h610 disabled +0x4000000 vpic", htmlfile
+                                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/goof2.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
+                            
+                            this["borderGui"]:=1
+                        }
+                        if !(winexist("ahk_id " 边界hwnd))
+                            gui, % "边界:show", % "center y55", % "anime selection"
 
+                    ;/anime selection
+                        ;/选择
+                            w:=0, i:=1, final:="1|", c:=2, z:=1, counter:=1
                             gui, % "选择:destroy"
-                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu +border"
-                            gui, % "选择:color", % "0x11111b",  % "0x11111b"
+                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu +scroll"
+                            dllcall("SetParent", "uint", 选择hwnd, "uint", 边界hwnd)
+                            gui, % "选择:color", % "0x1e1e2e",  % "0x1e1e2e"
                             gui, % "选择:font", % "s12 q4 w1", % "Consolas"
                             gui, % "选择:Margin", % "0", % "0"
-                            base.__gui.titleBar("选择",选择hwnd,515)
-                            gui, % "选择:Add", % "progress", % "w510 h60 x5 y+1 disabled hidden BACKGROUND181825 section", % " >"
-                            gui, % "选择:Add", % "edit", % "v选择edit xP+130 yP+0 w256 h25 -wantReturn ccdd6f4"
-                            gui, % "选择:Add", % "Button", % "xP+65 y+0 h25 w115 -TabStop hwnd选择search +default", % "search"
-                            fn:= objbindmethod(this,"__select")
-                            guicontrol, % "选择:+g", % 选择search, % fn
-                            ;gui, % "选择:Add", % "progress", % "w200 h200 x+0 y+0 BACKGROUND14141f ", % " >"
-                            i:=1, c:=2, temp:=results.count(), final:="1|", tabCounter:=1, tab:=1, z:=1
-                            while (temp-8>0) {
-                                final:=final . c++ . "|",temp:=temp-8
-                                if (c>=7)
-                                    break
-                            }
-                            gui, % "选择:Add", % "tab3",% "x0 y+0 w515 h500 ccdd6f4", % final
-                            gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
-                            ;_.print(results)
-                            for a,b in results {
-                                temp:="pic" . i
-                                gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x4 yS+235"):("x+0 yP-159")) . " w127 h159 disabled +0x4000000 vpic" . (i) . ((counter=1)?(" Section"):("")), htmlfile
-                                (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img src='" . (b.image) . "' width='127' height='159' style='width: 100%; height:100%;'></div></body>"), buttonText:=((b.title!="")?(b.title):(b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
-                                gui, % "选择:Add", % "Button", % ((counter>=4)?("x4 yS+394"):("xP+0 yP+159")) . " hwndabutton" . (i) . " w127 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
-                                temp:="abutton" . i, fn:= objbindmethod(this,"__episode",b.id)
-                                guicontrol, % "选择:+g", % (%temp%), % fn
-                                ((counter>=4)?(counter:=0):(""))
-                                i++, counter++, tabCounter++, z++
-                                if (tabCounter>=9) {
-                                    tab++
-                                    if (tab>=7)
+                            orginX:=15, orginY:=98, orginW:=486, orginH:=500 ;469 max width
+                            gui, % "选择:Add", % "progress", % "w0 h0 x+0 y+220 disabled BACKGROUNDTrans section"
+                            ;/adding the animes
+                                for a,b in animeList {
+                                    if ((episodesWatched[z]!="")&&(episodesWatched[z]>=b.totalEpisodes)) {
+                                        z++
+                                        continue
+                                    }
+                                    temp:="pic" . i
+                                    gui, % "选择:Add", % "ActiveX", % ((counter>=4)?("x0 yS+295"):("x+0 yP-220")) . " w156 h220 disabled +0x4000000 vpic" . (i) . ((counter<=2)?(" Section"):("")), htmlfile
+                                    (%temp%).Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='" . (b.image) . "'style='width: 100%; height:100%;'></div></body>"),buttonText:=((b.title!="")?(((episodesWatched[z]!="")?("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") "):("")) . b.title):(((episodesWatched[z]!="")?("(" . ( episodesWatched[z] . "/" . b.totalEpisodes ) . ") "):("")) . b.id)), isDub:=((_.filter(buttonText,"/\(dub\)/is"))?(1):(0)), ((isDub)?(buttonText:=_.filter(buttonText,"/\(dub\)/is=")):(""))
+                                    gui, % "选择:Add", % "Button", % ((counter>=4)?("x0 yS+515"):("xP+0 yP+220")) . " hwndwatchButton" . (i) . " w156 h75 +wrap", % (((strlen(buttonText)>24))?(((isDub)?("(dub) "):("")) . _.filter(buttonText,"/^.{21}/is") . ".."):(((isDub)?("(dub) "):("")) . buttonText))
+                                    temp:="watchButton" . i, fn:= objbindmethod(this,"__episode",b.id)
+                                    guicontrol, % "选择:+g", % (%temp%), % fn
+                                    ((counter>=4)?(counter:=1):())
+                                    if (z>47)
                                         break
-                                    gui, % "选择:tab", % (tab) . ((tabCounter:=1,counter:=0,tabCounter:=1)?"":"")
-                                    gui, % "选择:Add", % "progress", % "w0 h0 x4 y+159 ", % " >"
+                                    i++, counter++, z++
                                 }
-                            }
-                            if !(winexist("ahk_id " 选择hwnd))
-                                gui, % "选择:show", % "center y55", % "anime selection"
-                            gui, % "选择:tab"
-                            gui, % "选择:Add", % "ActiveX", % "x0 y21 w515 h610 disabled +0x4000000 vpic", htmlfile
-                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
-                    } return
+
+                        if !(winexist("ahk_id " 选择hwnd))
+                            gui, % "选择:show", % "x" . (orginX) . " y" . (orginY) . " w" . (orginW) . " h" . (orginH) . "", % "anime selection"
+                        guicontrol, % "边界:focus", % "边界edit"
+                        
+                    return
                 }
 
                 __episode(id) {
@@ -1357,13 +1572,9 @@ intel() {
                                     _.cmd("wait\hide@cd """ . userProfile . """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
                                 run, % userProfile . "\mpv.exe -- """ links.sources[count].url """ --ytdl=""no"" --vo=gpu-next,gpu --hwdec=nvdec --profile=sw-fast --gpu-dumb-mode=yes --load-osd-console=yes --scale=bilinear --fs=""yes"""
                                 temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
-                                if (content>_anime[anime.id])||(!_anime.haskey(anime.id)) {
-                                    _anime[anime.id]:=content
-                                    guicontrol, % "插曲:", % button, % content
-                                    _.reg.set("_anime",_anime)
-                                } else {
-                                    guicontrol, % "插曲:", % button, % _anime[anime.id]
-                                }
+                                _anime[anime.id]:=content
+                                guicontrol, % "插曲:", % button, % content
+                                _.reg.set("_anime",_anime)
                                 break
                         }
                     return
@@ -1383,6 +1594,806 @@ intel() {
                     } _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
                     return final
                 }
+            }
+
+            class __anime extends koi {
+                __input(obj) {
+                    static
+                    static 边界hwnd, 边界, pic, home, 边界home, 顶部按钮, 顶部按钮hwnd, 选择hwnd, search, 
+                    local watchedAnime, results, l, co, response, final, content, html, fn, cssStyle, htmlEnd, html2Add, a, b, c, i, temp, z, 
+                    ;* type : string
+                    ;* full : string
+                    ;* re : string
+                    ;* data : obj
+                    try
+                        content:=this.home.document.getElementById("searchBarInput").Value
+                    if (winexist("ahk_id " . 边界hwnd)) {
+                        if (content!="")
+                            obj["full"]:=content
+                    }
+                    if ((obj["type"]="search")&&(obj["full"]=""))
+                        obj["type"]:="home"
+                    ;_.print(obj,"doing its thing")
+                    ;/border gui
+                        ;/边界
+                            if !(this.borderGui) {
+                                gui, % "边界:destroy"
+                                gui, % "边界:+hwnd边界hwnd +LastFound -caption -sysmenu +0x2000000" ;+border
+                                gui, % "边界:color", % "0x11111b",  % "0x11111b"
+                                gui, % "边界:font", % "s12 q4 w1", % "Consolas"
+                                gui, % "边界:Margin", % "0", % "0"
+                                ;472 751
+                                ;gui, % "边界:Add", % "progress", % "w472 h1 x0 y0 disabled BACKGROUNDdbb453"
+                                ;gui, % "边界:Add", % "progress", % "w1 h751 x+-1 y+0 disabled BACKGROUNDdbb453"
+                                ;gui, % "边界:Add", % "progress", % "w472 h1 x+-472 y+0 disabled BACKGROUNDdbb453"
+                                ;gui, % "边界:Add", % "progress", % "w1 h751 xP+0 y+-752 disabled BACKGROUNDdbb453"
+                                ;gui, % "边界:Add", % "progress", % "w0 h0 x1 y1 disabled hidden BACKGROUNDdbb453"
+                                ;gui, % "边界:Add", % "progress", % "hwndgoof w472 h1 x0 y0 disabled BACKGROUNDdbb453"
+                                base.__gui.titleBar("边界",边界hwnd,470)
+                                ;fn:= objbindmethod(this,"__input",{"type":"","full":"","re":"","data":""})
+                                ;guicontrol, % "边界:+g", % 边界search, % fn
+
+                                gui, % "边界:Add", % "progress", % "w460 h653 x6 y+55 disabled BACKGROUND181825 section", % " >"
+                                gui, % "边界:Add", % "progress", % "w0 h0 x6 y21 disabled hidden BACKGROUND181825 section"
+
+                                ;gui, % "边界:add", % "text", % "w75 h45 xS+0 yS+0 BACKGROUNDTrans hwnd边界home 0x201", % "goof"
+                                ;fn:=objbindmethod(_,"print","goof")
+                                ;guicontrol, % "边界:+g", % 边界home, % fn
+                                html=
+                                ( Ltrim join
+                                <!Doctype html>
+                                    <style>
+                                        margin: 0;
+                                        html { 
+                                            overflow:hidden;
+                                            scroll-behavior: smooth;
+                                        }
+                                        body {
+                                            padding-left: 0px;
+                                        }
+
+                                        button {
+                                            position: relative;
+                                            //display:block;
+                                            height: 50px;
+                                            width: 50px;
+                                            margin: 0px 0px;
+                                            padding: 0px 0px;
+                                            font-weight: 700;
+                                            font-size: 15px;
+                                            letter-spacing: 2px;
+                                            color: #9d8549;
+                                            border: 2px #9d8549 solid;
+                                            border-radius: 12px;
+                                            text-transform: uppercase;
+                                            outline: 0;
+                                            overflow:hidden;
+                                            background: #11111b;
+                                            z-index: 1;
+                                            cursor: pointer;
+                                            transition:         0.08s ease-in;
+                                            -o-transition:      0.08s ease-in;
+                                            -ms-transition:     0.08s ease-in;
+                                            -moz-transition:    0.08s ease-in;
+                                            -webkit-transition: 0.08s ease-in;
+                                          }
+                                          
+                                          .fill:hover {
+                                            color: #11111b;
+                                          }
+                                          
+                                          .fill:before {
+                                            content: "";
+                                            position: absolute;
+                                            background: #9d8549;
+                                            bottom: 0;
+                                            left: 0;
+                                            right: 0;
+                                            top: 100`%;
+                                            z-index: -1;
+                                            -webkit-transition: top 0.09s ease-in;
+                                          }
+                                          
+                                          .fill:hover:before {
+                                            top: 0;
+                                          }
+
+                                          .scrolling-box {
+                                            background-color: #11111b;
+                                            display: block;
+                                            height: 50px;
+                                            overflow-y: scroll;
+                                            scroll-behavior: smooth;
+                                            width: 490px;
+                                            margin: 0;
+                                          }
+
+                                          .goof {
+                                            width: 252px;
+                                            height: 50;
+                                            display: flex;
+                                            position:relative;
+                                            left: 104px;
+                                            bottom: 50px;
+                                          }
+                                          form#searchBar {
+                                            width: 200px;
+                                            height: 50px;
+                                            display: flex;
+                                          }
+                                          form#searchBar input {
+                                            flex: 1;
+                                            border: none;
+                                            outline: none;
+                                            border-radius: 12px;
+                                            border-top-left-radius: 0px;
+                                            border-bottom-left-radius: 0px;
+                                            text-indent: 10px;
+                                            font-family: 'poppins', sans-serif;
+                                            font-size: 18px;
+                                            color: #bda057;
+                                          }
+                                          form#searchBar .fa-search {
+                                            align-self: center;
+                                            padding: 10px;
+                                            color: #777;
+                                            background: #11111b;
+                                          }
+                                    </style>
+                                    <html>
+                                        <body style='margin: 0; background-color:#11111b; overflow: hidden;'>
+                                            <div class='a'>
+                                                <button id="favoriteButton" class="fill">
+                                                    <i class="fa-solid fa-star fa-2x"></i>
+                                                </button>
+                                                <button id="homeButton" class="fill" style='position relative;left:2px;'>
+                                                    <i class="fa-solid fa-house fa-2x" border="0"></i>
+                                                </button>
+                                                <div class="goof">
+                                                    <button id="searchBarButton" class="fill" style='position relative;border-top-right-radius: 0px;border-bottom-right-radius: 0px;'>
+                                                        <i class="fas fa-search fa-2x"></i>
+                                                    </button>
+                                                    <form id="searchBar">
+                                                        <input autofocus id="searchBarInput" type="text" placeholder="Search.." />
+                                                    </form>
+                                                </div>
+                                                <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png' style='width: 80px; height: 80px; display: flex; position:relative; left: 367px; bottom: 100px;'>
+                                            </div>
+                                        </body>
+                                        <script src="https://kit.fontawesome.com/c4254e24a8.js" crossorgin="anonymous"></script>
+                                        <script>
+                                            var input = document.getElementById("searchBar");
+                                            input.addEventListener("keypress", function(event) {
+                                            if (event.key === "Enter") {
+                                                event.preventDefault();
+                                                document.getElementById("searchBarButton").click();
+                                            }
+                                            });
+                                        </script>
+                                    </html>
+                                )
+                                ;<input type="button" id="home" value="#" />
+                                ;<button class="fill" style='position: relative;top: 200px;right:150px;'>#</button>
+                                ;_.print(html)
+                                ;base.__html5.fix()
+                                gui, % "边界:Add", % "ActiveX", % "xP+0 yP+1 w460 h200 +0x4000000 -HScroll vhome", about:blank
+                                home.document.write(html)
+                                this["home"]:=home
+                                favId:=home.document.getElementById("favoriteButton")
+                                ComObjConnect(favID, {"onclick":objbindmethod(this,"__input",{"type":"fav","re":"","full":"","data":""})})
+                                homeId:=home.document.getElementById("homeButton")
+                                ComObjConnect(homeID, {"onclick":objbindmethod(this,"__input",{"type":"home","re":"","full":"","data":""})})
+
+                                ;searchId:=home.document.getElementById("searchBarInput")
+                                ;ComObjConnect(searchId, {"onclick":objbindmethod(this,"__searchHandler")})
+
+                                searchButtonId:=home.document.getElementById("searchBarButton")
+                                ComObjConnect(searchButtonId, {"onclick":objbindmethod(this,"__input",{"type":"search","re":"","full":"","data":""})})
+
+                                gui, % "边界:Add", % "ActiveX", % "x1 y22 w470 h729 disabled +0x4000000 vpic", htmlfile
+                                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>")
+                                this["borderGui"]:=1
+                            }
+                        if !(winexist("ahk_id " 边界hwnd))
+                            gui, % "边界:show", % "center y55 w472", % "anime selection"
+                    ;/interpret
+                        switch (obj["type"]) {
+                            case "search": {
+                                ;/search
+                                    watchedAnime:=_.reg.get("_anime"), results:=[], l:=1
+                                    loop {
+                                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0"), co.open("GET","https://api.consumet.org/anime/gogoanime/" . _.filter(obj["full"],"/\ /is=-") . "?page=" . l), co.send(), response:=_.json.load(co.responseText)
+                                        results.bump(response.results)
+                                        l++
+                                        if (!(response.hasNextPage)||(l>=4))
+                                            break
+                                    }
+                                    if (response.results.count()<=0) {
+                                        if (obj["re"]!="")
+                                            _.notify("anime not found")
+                                        return ("anime not found")
+                                    }
+                                    ;/display search
+                                        ;/style
+                                            cssStyle=
+                                            ( ltrim join
+                                            <style>
+                                                margin: 0;
+                                                html { 
+                                                    overflow:hidden;
+                                                    scroll-behavior: smooth;
+                                                }
+                                                body {
+                                                    padding-left: 0px;
+                                                }
+
+                                                button {
+                                                    position: relative;
+                                                    //display:block;
+                                                    height: 50px;
+                                                    width: 50px;
+                                                    margin: 3px 0px;
+                                                    padding: 0px 0px;
+                                                    font-weight: 700;
+                                                    font-size: 15px;
+                                                    letter-spacing: 2px;
+                                                    color: #cdd6f4;
+                                                    border: 2px #9d8549 solid;
+                                                    border-radius: 12px;
+                                                    text-transform: uppercase;
+                                                    outline: 0;
+                                                    overflow:hidden;
+                                                    background: #11111b;
+                                                    z-index: 1;
+                                                    cursor: pointer;
+                                                    transition:         0.08s ease-in;
+                                                    -o-transition:      0.08s ease-in;
+                                                    -ms-transition:     0.08s ease-in;
+                                                    -moz-transition:    0.08s ease-in;
+                                                    -webkit-transition: 0.08s ease-in;
+                                                }
+                                                
+                                                .fill:hover {
+                                                    color: #cdd6f4;
+                                                }
+                                                
+                                                .fill:before {
+                                                    content: "";
+                                                    position: absolute;
+                                                    background: #0b0b12;
+                                                    bottom: 0;
+                                                    left: 0;
+                                                    right: 0;
+                                                    top: 100`%;
+                                                    z-index: -1;
+                                                    -webkit-transition: top 0.09s ease-in;
+                                                }
+                                                
+                                                .fill:hover:before {
+                                                    top: 0;
+                                                }
+
+                                                .scrolling-box {
+                                                    background-color: #181825;
+                                                    display: block;
+                                                    width: 100`%;
+                                                    height: 100`%;
+                                                    overflow-y: scroll;
+                                                    scroll-behavior: smooth;
+                                                    margin: 0px 0px;
+                                                    padding: 0px 0px;
+
+                                                }
+
+                                                .text-field {
+                                                    margin: 5 5;
+                                                    font-size: 16px;
+                                                    display: flex;
+                                                    position: absolute;
+                                                    font-weight: 700;
+                                                    letter-spacing: 2px;
+                                                    font-family: 'Trebuchet MS', sans-serif;
+                                                    width: 268px;
+                                                    height: 100`%;
+                                                    text-align: center;
+                                                }
+                                            </style>
+                                            )
+                                        ;181825
+                                        html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 653px;'>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        ;/选择
+                                            gui, % "选择:destroy"
+                                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu"
+                                            dllcall("SetParent", "uint", 选择hwnd, "uint", 边界hwnd)
+                                            gui, % "选择:color", % "0x1e1e2e",  % "0x1e1e2e"
+                                            gui, % "选择:font", % "s12 q4 w1", % "Consolas"
+                                            gui, % "选择:Margin", % "0", % "0"
+                                            html2Add:="", i:=0
+                                            ;/build search html
+                                                for a,b in results {
+                                                    i++
+                                                    html2Add:= html2Add . ""
+                                                    . "<button id=""b" . (i) . """ class=""fill"" style='width: 100%; height: 217px;'>"
+                                                    . "     <img class='background-image' src='" . (b.image) . "' style='width: 139px; height: 197px; display: flex; position:relative; left: 10px; border-radius: 12px;'>"
+                                                    . "     <div class='text-field' style='font-size: 15px; top:10px; right:10px;'>" . ((b.title)?(b.title):(b.id)) . ""
+                                                    . "         <br><div class='text-field' style='font-size: 15px; top: 150px; color: " . ((b.subordub="dub")?("#9d8549"):("#9d4f49")) . ";'>" . (b.subOrDub) . "</div>"
+                                                    . "         <br><div class='text-field' style='font-size: 15px; top: 175px; opacity: 0.5;'>" . (b.releaseDate) . "</div>"
+                                                    . "     </div>"
+                                                    . "</button>"
+                                                } i:=0
+                                                gui, % "选择:Add", % "ActiveX", % "xP+0 yP+1 w460 h653 -0x4000000 -HScroll vsearch", about:blank
+                                                search.document.write(html . (html2Add) . htmlEnd)
+                                                gui, % "选择:show", % "x" . (6) . " y" . (77) . " w460 h653"
+                                            ;/link buttons
+                                                for a,b in results {
+                                                    i++, temp:="b" . i
+                                                    (%temp%):=search.document.getElementById("b" . i)
+                                                    ;ComObjConnect((%temp%), {"onclick":objbindmethod(this,"__input",{"type":"episode","re":"","full":"","data":{"id":b.id}})})
+                                                    ComObjConnect((%temp%), {"onclick":objbindmethod(this,"__episode",b.id)})
+                                                }
+                                    
+                            }
+                            case "home": {
+                                ;/home
+                                    local episodesWatched
+                                    watchedAnime:=_.reg.get("_anime"), results:=[], l:=1, episodesWatched:=[]
+                                    for a,b in watchedAnime {
+                                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                                        co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
+                                        co.send(), results.push(_.json.load(co.responseText)), episodesWatched.push(b)
+                                    }
+                                    ;/display home
+                                        ;/style
+                                            cssStyle=
+                                            ( ltrim join
+                                            <style>
+                                                margin: 0;
+                                                html { 
+                                                    overflow:hidden;
+                                                    scroll-behavior: smooth;
+                                                }
+                                                body {
+                                                    padding-left: 0px;
+                                                }
+
+                                                button {
+                                                    position: relative;
+                                                    //display:block;
+                                                    height: 50px;
+                                                    width: 50px;
+                                                    margin: 3px 0px;
+                                                    padding: 0px 0px;
+                                                    font-weight: 700;
+                                                    font-size: 15px;
+                                                    letter-spacing: 2px;
+                                                    color: #cdd6f4;
+                                                    border: 2px #9d8549 solid;
+                                                    border-radius: 12px;
+                                                    text-transform: uppercase;
+                                                    outline: 0;
+                                                    overflow:hidden;
+                                                    background: #11111b;
+                                                    z-index: 1;
+                                                    cursor: pointer;
+                                                    transition:         0.08s ease-in;
+                                                    -o-transition:      0.08s ease-in;
+                                                    -ms-transition:     0.08s ease-in;
+                                                    -moz-transition:    0.08s ease-in;
+                                                    -webkit-transition: 0.08s ease-in;
+                                                }
+                                                
+                                                .fill:hover {
+                                                    color: #cdd6f4;
+                                                }
+                                                
+                                                .fill:before {
+                                                    content: "";
+                                                    position: absolute;
+                                                    background: #0b0b12;
+                                                    bottom: 0;
+                                                    left: 0;
+                                                    right: 0;
+                                                    top: 100`%;
+                                                    z-index: -1;
+                                                    -webkit-transition: top 0.09s ease-in;
+                                                }
+                                                
+                                                .fill:hover:before {
+                                                    top: 0;
+                                                }
+
+                                                .scrolling-box {
+                                                    background-color: #181825;
+                                                    display: block;
+                                                    width: 100`%;
+                                                    height: 100`%;
+                                                    overflow-y: scroll;
+                                                    scroll-behavior: smooth;
+                                                    margin: 0px 0px;
+                                                    padding: 0px 0px;
+
+                                                }
+
+                                                .text-field {
+                                                    margin: 5 5;
+                                                    font-size: 16px;
+                                                    display: flex;
+                                                    position: absolute;
+                                                    font-weight: 700;
+                                                    letter-spacing: 2px;
+                                                    font-family: 'Trebuchet MS', sans-serif;
+                                                    width: 268px;
+                                                    height: 100`%;
+                                                    text-align: center;
+                                                }
+                                            </style>
+                                            )
+                                        ;181825
+                                        html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 653px;'>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        ;/选择
+                                            gui, % "选择:destroy"
+                                            gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu"
+                                            dllcall("SetParent", "uint", 选择hwnd, "uint", 边界hwnd)
+                                            gui, % "选择:color", % "0x1e1e2e",  % "0x1e1e2e"
+                                            gui, % "选择:font", % "s12 q4 w1", % "Consolas"
+                                            gui, % "选择:Margin", % "0", % "0"
+                                            html2Add:="", i:=0, z:=0
+                                            ;/build search html
+                                                for a,b in results {
+                                                    z++
+                                                    ;_.print(episodesWatched[z] . " / " . b.totalEpisodes)
+                                                    if ((episodesWatched[z]!="")&&((episodesWatched[z]>=b.totalEpisodes)&&(true)))
+                                                        continue
+                                                    i++
+                                                    html2Add:= html2Add . ""
+                                                    . "<button id=""b" . (i) . """ class=""fill"" style='width: 100%; height: 217px;'>"
+                                                    . "     <img class='background-image' src='" . (b.image) . "' style='width: 139px; height: 197px; display: flex; position:relative; left: 10px; border-radius: 12px;'>"
+                                                    . "     <div class='text-field' style='font-size: 15px; top:10px; right:10px;'>" . ((b.title)?(b.title):(b.id)) . ""
+                                                    . "         <br><div class='text-field' style='font-size: 15px; top: 150px; color: " . ((b.subordub="dub")?("#9d8549"):("#9d4f49")) . ";'>" . (b.subOrDub) .  " (" . episodesWatched[z] . "/" . b.totalEpisodes . ")</div>"
+                                                    . "         <br><div class='text-field' style='font-size: 15px; top: 175px; opacity: 0.5;'>" . (b.releaseDate) . "</div>"
+                                                    . "     </div>"
+                                                    . "</button>"
+                                                } i:=0, z:=0
+                                                gui, % "选择:Add", % "ActiveX", % "xP+0 yP+1 w460 h653 -0x4000000 -HScroll vsearch", about:blank
+                                                search.document.write(html . (html2Add) . htmlEnd)
+                                                gui, % "选择:show", % "x" . (6) . " y" . (77) . " w460 h653"
+                                            ;/link buttons
+                                                for a,b in results {
+                                                    z++
+                                                    if ((episodesWatched[z]!="")&&(episodesWatched[z]>=b.totalEpisodes))
+                                                        continue
+                                                    i++, temp:="b" . i
+                                                    (%temp%):=search.document.getElementById("b" . i)
+                                                    ;ComObjConnect((%temp%), {"onclick":objbindmethod(this,"__input",{"type":"episode","re":"","full":"","data":{"id":b.id}})})
+                                                    ComObjConnect((%temp%), {"onclick":objbindmethod(this,"__episode",b.id)})
+                                                }
+                            }
+                            case "fav": {
+                                ;/favorites
+                                    
+                            }
+                            case "episode": {
+                                ;/episode
+                                    local anime, _anime
+                                    ;/style
+                                        cssStyle=
+                                        ( ltrim join
+                                        <style>
+                                            margin: 0;
+                                            html { 
+                                                overflow:hidden;
+                                                scroll-behavior: smooth;
+                                            }
+                                            body {
+                                                padding-left: 0px;
+                                            }
+
+                                            button {
+                                                position: relative;
+                                                //display:block;
+                                                height: 50px;
+                                                width: 50px;
+                                                margin: 3px 0px;
+                                                padding: 0px 0px;
+                                                font-weight: 700;
+                                                font-size: 15px;
+                                                letter-spacing: 2px;
+                                                color: #cdd6f4;
+                                                border: 2px #9d8549 solid;
+                                                border-radius: 12px;
+                                                text-transform: uppercase;
+                                                outline: 0;
+                                                overflow:hidden;
+                                                background: #11111b;
+                                                z-index: 1;
+                                                cursor: pointer;
+                                                transition:         0.08s ease-in;
+                                                -o-transition:      0.08s ease-in;
+                                                -ms-transition:     0.08s ease-in;
+                                                -moz-transition:    0.08s ease-in;
+                                                -webkit-transition: 0.08s ease-in;
+                                            }
+                                            
+                                            .fill:hover {
+                                                color: #cdd6f4;
+                                            }
+                                            
+                                            .fill:before {
+                                                content: "";
+                                                position: absolute;
+                                                background: #0b0b12;
+                                                bottom: 0;
+                                                left: 0;
+                                                right: 0;
+                                                top: 100`%;
+                                                z-index: -1;
+                                                -webkit-transition: top 0.09s ease-in;
+                                            }
+                                            
+                                            .fill:hover:before {
+                                                top: 0;
+                                            }
+
+                                            .scrolling-box {
+                                                background-color: #181825;
+                                                display: block;
+                                                width: 100`%;
+                                                height: 100`%;
+                                                overflow-y: scroll;
+                                                scroll-behavior: smooth;
+                                                margin: 0px 0px;
+                                                padding: 0px 0px;
+
+                                            }
+
+                                            .text-field {
+                                                margin: 5 5;
+                                                font-size: 16px;
+                                                display: flex;
+                                                position: absolute;
+                                                font-weight: 700;
+                                                letter-spacing: 2px;
+                                                font-family: 'Trebuchet MS', sans-serif;
+                                                width: 268px;
+                                                height: 100`%;
+                                                text-align: center;
+                                            }
+                                            .box {
+                                                width: 98.5`%;
+                                                height: 217px;
+                                                border: 2px #9d8549 solid;
+                                                border-radius: 12px;
+                                                letter-spacing: 2px;
+                                                text-transform: uppercase
+                                                background: #11111b;
+                                                text-align: center;
+                                                margin: 0 0;
+                                                display: block;
+                                            }
+
+                                            Button#favoriteButton {
+                                                position: relative;
+                                                //display:block;
+                                                height: 50px;
+                                                width: 50px;
+                                                margin: 0px 0px;
+                                                padding: 0px 0px;
+                                                font-weight: 700;
+                                                font-size: 15px;
+                                                letter-spacing: 2px;
+                                                color: #9d8549;
+                                                border: 2px #9d8549 solid;
+                                                border-radius: 12px;
+                                                text-transform: uppercase;
+                                                outline: 0;
+                                                overflow:hidden;
+                                                background: #11111b;
+                                                z-index: 1;
+                                                cursor: pointer;
+                                                transition:         0.08s ease-in;
+                                                -o-transition:      0.08s ease-in;
+                                                -ms-transition:     0.08s ease-in;
+                                                -moz-transition:    0.08s ease-in;
+                                                -webkit-transition: 0.08s ease-in;
+                                              }
+                                              
+                                              
+                                        </style>
+                                        )
+
+                                    co:=ComObjCreate("MSXML2.XMLHTTP.6.0"), co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . obj["data"].id), co.send(), anime:=_.json.load(co.responseText)
+                                    ;_.print(anime)
+                                    ;/选择
+                                        gui, % "选择:destroy"
+                                        gui, % "选择:+hwnd选择hwnd +LastFound -caption -sysmenu"
+                                        dllcall("SetParent", "uint", 选择hwnd, "uint", 边界hwnd)
+                                        gui, % "选择:color", % "0x1e1e2e",  % "0x1e1e2e"
+                                        gui, % "选择:font", % "s12 q4 w1", % "Consolas"
+                                        gui, % "选择:Margin", % "0", % "0"
+                                        html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 5 0; width: 460px; height: 653px'>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        html2Add:="", i:=0
+                                        ;/build episode html
+                                            temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                            html2Add:= html2Add . ""
+                                            . "<div class='box' style='position: relative;'>"
+                                            . "     <img class='background-image' src='" . (anime.image) . "' style='width: 139px; height: 197px; display: flex; position:relative; left: 10px; border-radius: 12px; top: 10px;'>"
+                                            . "     <div class='text-field' style='font-size: 15px; top:10px; right:10px;'>" . ((anime.title)?(anime.title):(anime.id)) . ""
+                                            . "         <br><div class='text-field' style='font-size: 15px; font-weight: 700; top: 140px; color: " . ((anime.subordub="dub")?("#9d8549"):("#9d4f49")) . ";'>" . (anime.subOrDub) . "</div>"
+                                            . "         <br><div class='text-field' style='font-size: 15px; font-weight: 700; top: 165px; opacity: 0.5;'>" . (anime.releaseDate) . "</div>"
+                                            . "     </div>"
+                                            . "</div>"
+                                            . "<button id=""favoriteButton"" class=""fill"" style='position: relative; top: 10px;'>"
+                                            . "     <i class=""fa-solid fa-star fa-2x""></i>"
+                                            . "</button>"
+                                            . "<div class='box' style='border: 0px #0b0b12 solid; position: relative; top: 5px; width: 97`%; height: 100%;'>"
+                                            . "     <div class='text-field' style='margin: auto; width: 100%px; left: 10px;'><p>" . (((_anime[anime.id]!="")?(_anime[anime.id]):(0)) . "/" . anime.totalEpisodes) . " episodes watched</p></div>"
+                                            . "     <div class='text-field' style='margin: auto; width: 100%px; left: 10px; top: 25px; color: " . ((anime.status="completed")?("#9d8549"):("#9d4f49")) . ";'><p>" . (anime.status) . "</p></div>"
+                                            . "     <div class='text-field' style='margin: auto; width: 100%px; left: 10px; top: 50px; height: 100%; width: 97`%;'><p>" . (anime.description) . "</p></div>"
+                                            . "</div>"
+                                            . "<div style='position: fixed; bottom: 0px; display:inline-block;'>"
+                                            . "     <button id=""next"" class=""fill"" style='position: relative; color: #9d8549;'>"
+                                            . "         <i class=""fa-solid fa-star fa-2x""></i>"
+                                            . "     </button>"
+                                            . "</div>"
+
+
+                                            ;_.print(html)
+                                        gui, % "选择:Add", % "ActiveX", % "xP+0 yP+1 w460 h653 -0x4000000 -HScroll vsearch", about:blank
+                                        search.document.write(html . (html2Add) . htmlEnd)
+                                        gui, % "选择:show", % "x" . (6) . " y" . (77) . " w460 h653"
+                            }
+                        }
+                    return
+                }
+
+                __episode(id) {
+                    local co, anime, i, temp, title, content, fn, a, b, episodes, comboFinal, epiCount
+                    static 插曲, 插曲hwnd, pic, 插曲button, 插曲skip
+                    ;/get anime info
+                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                        co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . id)
+                        co.send()
+                        anime:=_.json.load(co.responseText)
+                    ;/episode selection gui
+                        gui, % "插曲:destroy"
+                        gui, % "插曲:+hwnd插曲hwnd +LastFound -caption -sysmenu +border"
+                        gui, % "插曲:color", % "0x11111b",  % "0x11111b"
+                        gui, % "插曲:font", % "s12 q4 w1", % "Consolas"
+                        gui, % "插曲:Margin", % "0", % "0"
+                        base.__gui.titleBar("插曲",插曲hwnd,255)
+                        gui, % "插曲:Add", % "ActiveX", % "x0 y+0 w255 h318 disabled +0x4000000 vpic", htmlfile
+                        pic.Write("<body style='margin: 0; overflow: hidden;'><img src='" . (anime.image) . "' width='255' height='318' style='width: 100%; height:100%;'></body>")
+                        gui, % "插曲:Add", % "progress", % "BACKGROUND11111b w255 h40 xP+0 yP+318 Section", % " >" . ((title:=anime.title)?"":"")
+                        gui, % "插曲:Add", % "text", % "xSP+0 ySP+10 cf2cdf2 BACKGROUNDTrans", % (((strlen(title)>21))?(_.filter(title,"/^.{18}/is") . "..."):(title))
+                        gui, % "插曲:Add", % "text", % "x+6 yP+0 cedb34e BACKGROUNDTrans", % "(" . (anime.subOrDub) . ")" . ((title:=anime.otherName)?"":"")
+                        gui, % "插曲:Add", % "text", % "xSP+0 yP+20 c7ab1f5 BACKGROUNDTrans", % (((strlen(title)>26))?(_.filter(title,"/^.{23}/is") . "..."):(title))
+                        gui, % "插曲:Add", % "edit", % "R5 w255 +wrap ccbcdd3 xSP+0 y+20 -E0x200 +readonly -TabStop -E0x002 -VScroll", % anime.description
+                        i:=1, epiCount:=anime.episodes.find("<@\/^number$/is")
+                        for a,b in epiCount
+                            comboFinal:=comboFinal . b . "|"
+                        gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 w85 -TabStop -E0x200", % comboFinal
+                        temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                        gui, % "插曲:Add", % "Button", % "x+1 yP+0 h28 w85 -TabStop hwnd插曲button", % ((_anime[anime.id])?(_anime[anime.id]):(0))
+                        fn:= objbindmethod(this,"__watch",anime,插曲button,"")
+                        guicontrol, % "插曲:+g", % 插曲button, % fn
+                        gui, % "插曲:Add", % "Button", % "x+0 yP+0 h28 w85 -TabStop hwnd插曲skip", % "->"
+                        fn:= objbindmethod(this,"__watch",anime,插曲button,"goof")
+                        guicontrol, % "插曲:+g", % 插曲skip, % fn
+                        if !(winexist("ahk_id " 插曲hwnd))
+                            gui, % "插曲:show", % "center y55 w255", % "anime selection"
+                    return
+                }
+
+                __watch(anime,button,_override:="") {
+                    guicontrolget,content, % "插曲:", % "插曲combo"
+                    ;/episode id finder
+                        if (_override!="") {
+                            _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
+                            i:=round(watched), episodes:=anime.episodes, w:=1
+                            loop {
+                                current:=episodes[i]
+                                if (current.number=watched) {
+                                    episodeId:=current.id
+                                    break
+                                } if (current.number<watched)
+                                    i++
+                                if (current.number>watched)
+                                    i--
+                                if (w++>=episodes.count()) {
+                                    guicontrol, % "插曲:", % button, % "?"
+                                    return
+                            }} if (episodes[i+1].id!="")
+                                episodeId:=episodes[i+1].id, content:=episodes[i+1].number
+                            else
+                                episodeId:=episodes[1].id, content:=episodes[i+1].number
+                            i:=0, w:=0
+                        }
+                        if (content="")
+                            return
+                        guicontrol, % "插曲:", % button, % "..."
+                        if !(episodeId) {
+                            i:=round(content), episodes:=anime.episodes, w:=1
+                            loop {
+                                current:=episodes[i]
+                                if (current.number=content) {
+                                    episodeId:=current.id
+                                    break
+                                } if (current.number<content)
+                                    i++
+                                if (current.number>content)
+                                    i--
+                                if (w++>=episodes.count()) {
+                                    guicontrol, % "插曲:", % button, % "?"
+                                    return
+                            }}
+                            i:=0, w:=0
+                        } servers:=["gogocdn","streamsb","vidstreaming"],w:=1
+                    ;/fucking open the anime
+                        loop {
+                            ;/get episode links
+                                co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                                co.open("GET","https://api.consumet.org/anime/gogoanime/watch/" . (episodeId) . "?server=" . servers[w])
+                                co.send()
+                                ;_.print(co.responseText)
+                                if ((co.responseText="") || (co.responseText="{""message"":{}}")) {
+                                    if (w>=servers.count()) {
+                                        guicontrol, % "插曲:", % button, % "?"
+                                        return
+                                    } w++
+                                    continue
+                                }
+                                links:=_.json.load(co.responseText)
+                            ;/qualites
+                                count:=links.sources.count()
+                                ;_.print(links.sources[count].url)
+                                loop {
+                                    check:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                                    check.open("GET",links.sources[count].url)
+                                    check.send()
+                                    ;_.print(check.responseText)
+                                    if ((check.responseText!="") && !(_.filter(check.responseText,"/\>500 Internal Server Error\</is")))
+                                        break
+                                    count--
+                                    if (w>=servers.count()) {
+                                        guicontrol, % "插曲:", % button, % "?"
+                                        return
+                                    } w++
+                                    continue
+                                }
+                                ;_.print(links.sources[count].url)
+                            ;/mpv
+                                EnvGet,drive,SystemDrive
+                                userProfile:=drive "\users\" a_username
+                                if !(fileExist(userProfile . "\OnTopReplica.exe"))
+                                    _.cmd("wait\hide@cd """ . userProfile . """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
+                                run, % userProfile . "\mpv.exe -- """ links.sources[count].url """ --ytdl=""no"" --vo=gpu-next,gpu --hwdec=nvdec --profile=sw-fast --gpu-dumb-mode=yes --load-osd-console=yes --scale=bilinear --fs=""yes"""
+                                temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                _anime[anime.id]:=content
+                                guicontrol, % "插曲:", % button, % content
+                                _.reg.set("_anime",_anime)
+                                break
+                        }
+                    return
+                }
+
+                __clean() {
+                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                    for a,b in watched {
+                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
+                        co.open("GET","https://api.consumet.org/anime/gogoanime/info/" . a)
+                        co.send(), animeList.push(_.json.load(co.responseText)), episodesWatched.push(b)
+                    } i:=1, cleaned:=0, final:=[]
+                    for a,b in animeList {
+                        if (episodesWatched[i]>=b.totalEpisodes)
+                            watched.delete(b.id), final.push(((b.title)?(b.title):(b.id))), cleaned++
+                        i++
+                    } _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
+                    return final
+                }
+
             }
 
             class __market extends koi {
@@ -1443,17 +2454,19 @@ intel() {
                     return
                 }
 
-                __search(full:="") {
+                __search(full:="",args*) {
                     static
                     static 市场, 市场hwnd, 市场combo1, 市场edit, 市场search, 市场tab, pic, close, mini
                     local a, b, search, i, list, tabCount, w, listCount, pageCount, final, z, counter, tabCounter, tab, ttd, co, response, download, ahkExist, exeExist, temp, fn
                     i:=1, w:=1, list:=this.__getList(), listCount:=list.count(), tab:=1, counter:=0, tabCounter:=1
-                    if (full!="") {
-                        search:=full
-                    } else {
-                        guicontrolget,content, % "市场:", % "市场edit"
+                    guicontrolget,content, % "市场:", % "市场edit"
+                    if (content!="") {
                         search:=content
+                    } else {
+                        search:=full
                     }
+                    ;市场
+                    ;市场子集
                     ;/market gui
                         gui, % "市场:destroy"
                         gui, % "市场:+hwnd市场hwnd +LastFound -SysMenu -caption +border"
@@ -1515,7 +2528,7 @@ intel() {
                             gui, % "市场:show", % "center y55 w530 h631", % "market"
                         guicontrol, % "市场:focus", % "市场edit"
                         gui, % "市场:Add", % "ActiveX", % "x0 y21 w530 h610 disabled +0x4000000 vpic", htmlfile
-                        pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://cdn.discordapp.com/attachments/940235107623649301/1118891173973610596/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
+                        pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/goof1.png' width='128' height='128' style='width: 100%; height:100%;'></div></body>")
                     return
                 }
             }
@@ -1545,12 +2558,113 @@ intel() {
             }
 
             class __macro extends koi {
-                __parse(args) {
-                    ttp:=args[1]
+                __parse(args,_isBind:="") {
+                    hk:=_.hk, ttp:=args[1], cmd_:=[], param_:=[], i:=0, ttl:=0
                     if (ttp!="") {
-                        goof:=_.filter(ttp,"/\/.\K.*?(?=\/|$)/isO")
-                        _.print(ttp,goof[0])
-                    }
+                        ;/macro parser
+                            loop {
+                                obj:=_.filter(ttp,"/(?<!\\)\\..*?(?=(?<!\\)\\|$)/isO"), objLength:=obj.len(0), objPos:=obj.pos(0)-1, cmd:=_.filter(ttp,"/(?<!\\)\\.(?=.*?(?=(?<!\\)\\|$))/is"), param:=_.filter(ttp,"/(?<!\\)\\.\K.*?(?=(?<!\\)\\|$)/is")
+                                if (cmd="")
+                                    break
+                                cmd_.push(_.filter(cmd,"/(?:\\\\)+?/is=\")), param_.push(_.filter(param,"/(?:\\\\)+?/is=\")), tempCommand:=_.filter(tempCommand,"/^.{" . currentStringPos . "}\K.{" . currentStringLength . "}(?=.*$)/is=" . filler), ttp:=_.filter(ttp,"/^.{" . objPos . "}\K.{" . objLength . "}(?=.*$)/is=")
+                                if (ttp="")
+                                    break
+                            } maxIndex:=cmd_.count()
+                        loop {
+                            i++
+                            if ((ttl>0)&&(i>maxIndex)){
+                                ttl--
+                                i:=0
+                                continue
+                            }
+                            if ((c2t=1)) {
+                                if (getkeystate(hk,"P")) {
+                                    if (stopEarly=1)
+                                        break
+                                    cae:=1
+                                } if (i>maxIndex) {
+                                    if (cae=1)
+                                        break
+                                    i:=0
+                                    continue
+                                }
+                            } else {
+                                if (i>maxIndex) {
+                                    if ((c2l=1)&&(getkeystate(hk,"P"))) {
+                                        i:=0,c2l:=0
+                                        continue
+                                    } break
+                            }}
+                            cmd:=cmd_[i], param:=param_[i]
+                            switch cmd {
+                                case "\c": _.clock()
+                                case "\s": send, % param
+                                case "\w": {
+                                    time:=_.filter(param,"/^\+?\K\d+/is")
+                                    loop {
+                                        if !(cae) {
+                                            if ((c2t=1)&&(getkeystate(hk,"P"))) {
+                                                if (stopEarly)
+                                                    break
+                                                cae:=1
+                                        }} if (time<1) {
+                                            _.when("+" . time)
+                                            break
+                                        } time--
+                                        _.when("+1")
+                                    } until (time<=0)
+                                }
+                                case "\:": {
+                                    if ((c2t=1)&&(getkeystate(hk,"P")))
+                                        break
+                                    _.wait()
+                                } case "\r": return
+                                case "\i": {
+                                    if (winactive(param)) {
+                                        cmd_.removeat(i),param_.removeat(i),i--,maxIndex--
+                                        continue
+                                    }
+                                    break
+                                } case "\l": c2l:=1
+                                case "\p": _.mouse.move(_.filter(param,"/^(?:\s+)?\K\d+(?=(?:\s+)?\,)/is"),_.filter(param,"/^.*\,(?:\s+)?\K\d+(?=(?:\s+)?)/is"))
+                                case "\q": _.mouse.relative(_.filter(param,"/^(?:\s+)?\K(?:\-)?\d+(?=(?:\s+)?\,)/is"),_.filter(param,"/^.*\,(?:\s+)?\K(?:\-)?\d+(?=(?:\s+)?)/is"))
+                                case "\1": DllCall("mouse_event", "UInt", 0x02) ;* left down
+                                case "\2": DllCall("mouse_event", "UInt", 0x04) ;* left up
+                                case "\3": DllCall("mouse_event", "UInt", 0x08) ;* right down
+                                case "\4": DllCall("mouse_event", "UInt", 0x10) ;* right up
+                                case "\t": base.__clip.clip(["paste",param])
+                                case "\@": cmd_.removeat(i),param_.removeat(i),i--,maxIndex--, ((_isBind!="")?(c2t:=1):())
+                                case "\!": cmd_.removeat(i),param_.removeat(i),i--,maxIndex--, ((_isBind!="")?(stopEarly:=1):())
+                                case "\m": {
+                                    switch (moveMouse) {
+                                        default: {
+                                            blockinput, % "MouseMove"
+                                            moveMouse:=1
+                                        }
+                                        case "1": {
+                                            blockinput, % "MouseMoveOff"
+                                            moveMouse:=0
+                                        }
+                                    }
+                                } case "\z": ((ttl<=0)?(ttl:=param):(""))
+                                case "\>": {
+                                    if (ttl>0) {
+                                        ttl--
+                                        i:=0
+                                        continue
+                                    }
+                                } case "\+": cmd_.removeat(i),param_.removeat(i),i--,maxIndex--,stk:=1
+                                case "\-": cmd_.removeat(i),param_.removeat(i),i--,maxIndex--,stk:=0
+                    }}} if (moveMouse=1)
+                        blockinput, % "MouseMoveOff"
+                        if (stk=1) {
+                            _.clock()
+                            send, % "{blind}{" . (hk) . " down}"
+                            _.when("2.33")
+                            _.wait()
+                            send, % "{blind}{" . (hk) . " up}"
+                            _.when("2.33")
+                        }
                     return
                 }
             }
@@ -1561,7 +2675,7 @@ intel() {
                     if (args[1]="clear") {
                         this.clearBind([args[2]])
                     } else {
-                        _.hotkey("$*~",args[1],objbindmethod(this,"__submit",args[2]),"on")
+                        _.hotkey("$*~",args[1],objbindmethod(this,"__submit",args[2],"","1"),"on")
                         _p:=_.reg.get("profiles"),prof:=_p.session, ((isobject(prof.binds))?(""):(prof.binds:={}))
                         prof.binds[args[1]]:=args[2], _.reg.set("profiles",_p)
                     }
@@ -1583,6 +2697,11 @@ intel() {
                     prof.binds:={}
                     _.reg.set("profiles",_p)
                 }
+                return
+            }
+
+            report(full) {
+                _.server.report(_.server.contact . " koi: " . full)
                 return
             }
         ;] /
@@ -3338,7 +4457,7 @@ intel() {
                         if (_version>=this.server.version)
                             return
                         type:=((a_iscompiled)?("exe"):("ahk")), name:=this.filter(a_scriptname,"/^.*(?=\..*$)/is"), url:=((type="exe")?(this.server.compiled):(this.server.source))
-                        this.cmd("hide@(cd """ a_scriptdir """ && powershell ""Invoke-WebRequest " url " -OutFile """ name ".zip"""")&(del /F /Q """ . (a_scriptdir . "\" . a_scriptname) . """)&(@powershell -command ""Expand-Archive -Force """ . (name) . ".zip"" -DestinationPath """ . (a_scriptdir) . """"")&(timeout 1)&(del /F /Q """ . (name) . ".zip"")&(move """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
+                        this.cmd("hide@(cd """ a_scriptdir """ && powershell ""Invoke-WebRequest " url " -OutFile \`""" name ".zip\`"""")&(del /F /Q """ . (a_scriptdir . "\" . a_scriptname) . """)&(@powershell -command ""Expand-Archive -Force \`""" . (name) . ".zip\`"" -DestinationPath \`""" . (a_scriptdir) . "\`"" "")&(timeout 1)&(del /F /Q """ . (name) . ".zip"")&(move """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
                         exitapp
                         return 0
                     }
