@@ -1,5 +1,5 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"43", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"})
+_.start({"packageName":"koi", "version":"45", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"}) ;235908237463
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
@@ -267,6 +267,10 @@ intel() {
                 ,"report":["`r`n"
                     ," report [message!]: directly message script owner (me)"
                     ,"   | report big non string message here"]
+                ,">":["`r`n"
+                    ," >: carp interface"
+                    ,"   | > mloop --reload"
+                    ,"   | > 'mloop: --reload'"]
                 ,"":""}
 
             static helpAliases:={"?":"help"
@@ -409,7 +413,17 @@ intel() {
                     ,"  - updated mhk library to mhk.3.beta.2"]
                 ,"43":["`r`n"
                     ," v43"
-                    ,"  - updated mhk library to mhk.3.beta.3"]}
+                    ,"  - updated mhk library to mhk.3.beta.3"]
+                ,"44":["`r`n"
+                    ," v44"
+                    ,"  - updated mhk library to mhk.3.beta.6"
+                    ,"  - i wish i could fix history but it keeps getting flagged"
+                    ,"  - carp interface no longer double loads with --reload"
+                    ,"  - updated help menu to include '>' (carp interface)"]
+                ,"45":["`r`n"
+                    ," v45"
+                    ,"  - updated mhk library to mhk.3.beta.7"
+                    ,"  - cleanAnimeList works now lol, didn't fix with api changes"]}
         ;/panels
             ;[ version panel
                 static versionPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
@@ -2412,7 +2426,9 @@ intel() {
                 }
 
                 __clean() {
-                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], goof:=[]
+                    for a,b in watched
+                        goof.push(a)
                     for a,b in watched {
                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                         co.open("GET",this.rootUrl . "info/" . a)
@@ -2420,9 +2436,10 @@ intel() {
                     } i:=1, cleaned:=0, final:=[]
                     for a,b in animeList {
                         if (episodesWatched[i]>=b.totalEpisodes)
-                            watched.delete(b.id), final.push(((b.title)?(b.title):(b.id))), cleaned++
+                            watched.delete(goof[i]), final.push(((b.title)?(b.title):(goof[i]))), cleaned++
                         i++
-                    } _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
+                    } _.print(watched)
+                    _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
                     return final
                 }
 
@@ -2746,7 +2763,7 @@ intel() {
 
 ;[/mhk
     ;ᗜˬᗜ
-    class _ { ;@ mhk.3.beta.2
+    class _ { ;@ mhk.3.beta.7
         ;/methods
             ;/tas
                 ;/__hotkey
@@ -3024,7 +3041,14 @@ intel() {
                         return this.__regex.__filter(_string,_pattern*)
                     }
                 
-            
+                ;/char
+                    char(_string,_amount) {
+                        loop, % _amount
+                            final:=final . _string
+                        return final
+                    }
+                    
+                
             
             ;/data
                 ;/registry
@@ -3458,6 +3482,7 @@ intel() {
                         #MaxHotkeysPerInterval 99999
                         #MaxThreadsPerHotkey 1
                         SysGet, ms_, Monitor
+                        setworkingdir, % a_scriptdir
                         ((_.filter(_obj.packageName,"/^[A-z!@#$%^&*_+=\-.]+$/is"))?():(_.error("conform with the naming scheme; /^[A-z!@#$%^&*_+=\-.]+$/")))
                         this["info"]:=_obj, this.reg.set("_name",a_scriptname), this.reg.set("_path",a_scriptdir), ((a_iscompiled)?(""):(this.reg.set("_ahk",A_AhkPath))), this["_clock"]:={}
                         if !(DllCall("Wininet.dll\InternetGetConnectedState", "Str", "0x40","Int",0)) && (this.info.passwordProtected)
@@ -3493,12 +3518,12 @@ intel() {
                         }
                         if (this.__html5.fix()!=1)
                             reload
-                        onmessage(0x4a,objbindmethod(this.carp,"recieve"))
+                        onmessage(0x4a,objbindmethod(this.carp,"recieve")), this.carp.onInit:=1, DllCall("AttachConsole","UInt",-1)
                         for a,b in a_args
                             args:=args . b . " "
-                        ((args!="")?(this.carp.recieve("1",args)):())
+                        ((args!="")?(this.carp.__parse(args,"1")):())
                         traytip, % this.filter(a_scriptname,"/^((?:.*)(?=\..+?$))/is"), % "version: " this.info.version , 0.1, 16
-                        OnMessage(0x404, objbindmethod(this.__tray,"__hover"))
+                        OnMessage(0x404, objbindmethod(this.__tray,"__hover")), this.carp.onInit:=0
                         return this.info.count()
                     }
                 
@@ -3516,7 +3541,6 @@ intel() {
                                     return StrGet(suuid), DllCall("rpcrt4.dll\RpcStringFree", "uint*", suuid)
                             return ""
                         }
-        
         
                         request(request*) {
                             static reqMem
@@ -3575,89 +3599,140 @@ intel() {
                             return re
                         }
         
-                        __parse(request) {
+                        __parse(request,isCMD:="0") {
                             ;/format request
                                 ;/parse into object
-                                temp:=request, reqObj:=[]
-                                requestId:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+(?=\:)/is"), temp:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+\:/is=")
-                                ;_.print("//",temp,"//")
-                                loop {
-                                    cso:=_.filter(temp,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/isO")
-                                    cs:=_.filter(temp,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/is")
-                                    ;_.print("String: " . cs)
-                                    csl:=cso.len(0), csp:=cso.pos(0)-1, args:=[]
-                                    if (cs="")
-                                        break
-                                    ;/args
-                                        fullArgs:=_.filter(cs,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=\K(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/is")
-                                        loop {
-                                            currentArgObj:=_.filter(fullArgs,"/^(?:\s+)?(?:(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1\,?(?:\s+)?)/isO")
-                                            currentArg:=_.filter(fullArgs,"/^(?:\s+)?(?:(?<!\\)([""'``])\K(?:\\.|[^\\])*?(?<!\\)(?=\1))/is")
-                                            ;_.print("full:" . fullArgs)
-                                            ;_.print(currentArg)
-                                            if (currentArg="")
-                                                break
-                                            currentArgLength:=currentArgObj.len(0), currentArgPos:=currentArgObj.pos(0)-1
-                                            currentQuoteType:=_.filter(fullArgs,"/^(?:\s+)?\K[""'``]/is")
-                                            args.push(_.filter(currentArg,"/\\(`" . (currentQuoteType) . ")/is=$1"))
-                                            fullArgs:=_.filter(fullArgs,"/^.{" . currentArgPos . "}\K.{" . currentArgLength . "}(?=.*$)/is=")
-                                        }
-                                        ;_.print(args)
-        
-                                    ;/find correct function for flag
-                                        tempHandler:={}, tempHandler.bump(this.flags)
-                                        fullFlagPath:=_.filter(cs,"/\-\-\K(?:[A-z\/])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"), fullFlagPathEnd:=fullFlagPath
-                                        loop {
-                                            cf:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+(?=(?:\/)?)/is")
-                                            fullFlagPath:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+\/?/is=")
-                                            if (cf="")
-                                                break
-                                            ;_.print(cf)
-                                            if (isfunc(tempHandler[cf])) {
-                                                reqObj.push({"func":tempHandler[cf],"args":args,"_path":fullFlagPathEnd})
-                                                break
-                                            } else {
-                                                tempHandler:=tempHandler[cf]
+                                    temp:=request, reqObj:=[]
+                                    requestId:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+(?=\:)/is"), temp:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+\:/is=")
+                                    ;_.print("//",temp,"//")
+                                    loop {
+                                        cso:=_.filter(temp,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/isO")
+                                        cs:=_.filter(temp,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/is")
+                                        ;_.print("String: " . cs)
+                                        csl:=cso.len(0), csp:=cso.pos(0)-1, args:=[]
+                                        if (cs="")
+                                            break
+                                        ;/args
+                                            fullArgs:=_.filter(cs,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=\K(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/is")
+                                            loop {
+                                                currentArgObj:=_.filter(fullArgs,"/^(?:\s+)?(?:(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1\,?(?:\s+)?)/isO")
+                                                currentArg:=_.filter(fullArgs,"/^(?:\s+)?(?:(?<!\\)([""'``])\K(?:\\.|[^\\])*?(?<!\\)(?=\1))/is")
+                                                ;_.print("full:" . fullArgs)
+                                                ;_.print(currentArg)
+                                                if (currentArg="")
+                                                    break
+                                                currentArgLength:=currentArgObj.len(0), currentArgPos:=currentArgObj.pos(0)-1
+                                                currentQuoteType:=_.filter(fullArgs,"/^(?:\s+)?\K[""'``]/is")
+                                                args.push(_.filter(currentArg,"/\\(`" . (currentQuoteType) . ")/is=$1"))
+                                                fullArgs:=_.filter(fullArgs,"/^.{" . currentArgPos . "}\K.{" . currentArgLength . "}(?=.*$)/is=")
                                             }
-                                        }
-                                    temp:=_.filter(temp,"/^.{" . csp . "}\K.{" . csl . "}(?=.*$)/is=")
-                                    ;_.print("//")
-                                }
-                                ;_.print(reqObj)
+                                            ;_.print(args)
+            
+                                        ;/find correct function for flag
+                                            tempHandler:={}, tempHandler.bump(this.flags)
+                                            fullFlagPath:=_.filter(cs,"/\-\-\K(?:[A-z\/])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"), fullFlagPathEnd:=fullFlagPath
+                                            loop {
+                                                cf:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+(?=(?:\/)?)/is")
+                                                fullFlagPath:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+\/?/is=")
+                                                if (cf="")
+                                                    break
+                                                ;_.print(cf)
+                                                if (isfunc(tempHandler[cf])) {
+                                                    reqObj.push({"func":tempHandler[cf],"args":args,"_path":fullFlagPathEnd})
+                                                    break
+                                                } else {
+                                                    tempHandler:=tempHandler[cf]
+                                                }
+                                            }
+                                        temp:=_.filter(temp,"/^.{" . csp . "}\K.{" . csl . "}(?=.*$)/is=")
+                                        ;_.print("//")
+                                    }
+                                    ;_.print(reqObj)
                             ;! convert to own function
                             ;/process request
                                 for a,b in ((re:=[])?(reqObj):("")) {
-                                    re.push(b["func"](b["args"]))
+                                    re.push(b["func"](b["args"],isCMD))
                                 }
-                                ;_.print(re)
+                                if (isCMD)
+                                    base.stdout(re,"`r`n`r`n")
                             return re
                         }
         
                         class flags extends _ {
-                            help(args) {
-                                _.print(base.carp.flags)
+                            help(args,isCMD) {
+                                for a,b in ((final:=[])?(base.carp.flags):())
+                                    final.push(((a!="__class")?(a):("#")))
+                                if (isCMD)
+                                    return final
+                                base.print(final)
                                 return
                             }
+                            
                             print(args) {
                                 _.print(args*)
                                 return
                             }
+                            
                             reload(args) {
-                                reload
+                                if (base.carp.oninit=0)
+                                    reload
                                 return
                             }
+                            
                             exit(args) {
                                 exitapp 107111105
                                 return
                             }
+                            
                             debug(args) {
                                 ListHotkeys
                                 return
                             }
-                            execute(args) {
-                                fn:=func(args[1]), args.removeat(1)
-                                fn.call(args*)
+                            
+                            suspend(args) {
+                                suspend, % "Toggle"
                                 return
+                            }
+                            
+                            edit(args) {
+                                _path:=_.reg.get("HKEY_CURRENT_USER\SOFTWARE\Classes\Applications\Code.exe\shell\open@@Icon")
+                                if (_path)
+                                    run, % _path . " " . ("""" . a_scriptdir . "\" . a_scriptname . """")
+                                else
+                                    run, % "notepad.exe " . ("""" . a_scriptdir . "\" . a_scriptname . """")
+                                if (base.carp.oninit=1)
+                                    exitapp 107111105
+                                return
+                            }
+                            
+                            execute(args) {
+                                reqObj:=[], chain:={}, target:=args[1], args.removeat(1)
+                                for a,b in args
+                                    ((base.filter(b,"/^(?:\[|\{).*(?:\]|\})$/is"))?(args[a]:=base.json.load(b)):())
+                                fullFlagPath:=_.filter(target,"/^(\s+)?\K(?:[A-z.])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"), fullFlagPathEnd:=fullFlagPath
+                                loop {
+                                    cf:=_.filter(fullFlagPath,"/^[A-z0-9_]+(?=(?:\.)?)/is")
+                                    fullFlagPath:=_.filter(fullFlagPath,"/^[A-z0-9_]+\.?/is=")
+                                    if (cf="")
+                                        break
+                                    current:=((chain.count()>0)?(chain[cf]):((cf)))
+                                    if (((chain.count()>0)?(chain[cf]):((%cf%))).haskey("private"))
+                                        continue
+                                    if (isfunc(current)) {
+                                        reqObj.push({"func":current,"args":args,"_path":fullFlagPathEnd})
+                                        break
+                                    } else {
+                                        chain:=((chain.count()>0)?(chain[cf]):((%cf%)))
+                                    }
+                                }
+                                for a,b in ((re:=[])?(reqObj):("")) {
+                                    re.push(b["func"](b["args"]*))
+                                }
+                                return re
+                            }
+
+                            compile(args) {
+                                return base.__compile.compileById(base.info.packageName)
                             }
                         }
         
@@ -3672,7 +3747,7 @@ intel() {
                         __open(_obj,redo:="0") {
                             static
                             static search, home, pic, favid, homeid, 参数2hwnd, 参数2subhwnd
-                            local id, html, ccsstyle, htmlfile, htmlend, i, savedParams, temp
+                            local id, html, ccsstyle, htmlfile, htmlend, i, savedParams, temp, amm, c, perList, final, goof, remadeList, temp, replaceList, a , b
                             id:="参数2", savedParams:=_.reg.get("params")
                             if (redo=0) {
                                 this.lastObj:=_obj
@@ -3963,9 +4038,13 @@ intel() {
                             gui, % id . ":color", % "0x1e1e2e",  % "0x1e1e2e"
                             gui, % id . ":font", % "s12 q4 w1", % "Consolas"
                             gui, % id . ":Margin", % "0", % "0"
+                            for a,b in ((c:=0,perList:=[])?():(_obj))
+                                amm:=strlen(base.filter(a,"/^.*(?=(?<!_)(?:_).*)/is")), perList.push(amm), ((amm>c)?(c:=amm):())
+                            for a,b in ((i:=0,final:=[],replaceList:={})?():(_obj))
+                                i++, temp:=base.char("-",(c-perList[i])), final[temp . a]:=b, replaceList[temp . a]:=a
                             html2Add:="", i:=0, this.ids:=[]
                             ;/build search html
-                                for a,b in _obj {
+                                for a,b in final {
                                     i++
                                     html2Add:= html2Add . ""
                                     . "<div class='box' style='font-size: 15px; position: relative;'>" . ("") . ""
@@ -3982,16 +4061,18 @@ intel() {
                                 gui, % id . ":show", % "x" . (6) . " y" . (77) . " w460 h460"
                             while (winexist("ahk_id " . 参数2hwnd)) {
                             }
-                            for a,b in ((final:={},i:=0)?(_obj):()) {
+                            for a,b in ((goof:={},i:=0)?(final):()) {
                                 i++
-                                final[a]:=search.document.getElementById("edit" . i).Value
-                            } _.reg.set("params",final)
+                                goof[a]:=search.document.getElementById(this.ids[i]).Value
+                            } for a,b in ((remadeList:={},i:=0)?(goof):()) {
+                                i++, remadeList[replaceList[a]]:=b
+                            } base.reg.set("params",remadeList)
                             if (redo) {
                                 reload
                                 exitapp
                             }
                             PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
-                            return final
+                            return remadeList
                         }
     
                         __confirm() {
@@ -3999,6 +4080,36 @@ intel() {
                             return
                         }
                     }
+                
+                ;/compiler
+                    class __compile extends _ {
+                        static private
+                        compileById(id) {
+                            _path:=base.reg.get("\" . id . "@@_path"), _name:=base.reg.get("\" . id . "@@_name"), compiler:=base.reg.get("\@@compiler")
+                            ;/get compiler location if not stored
+                                loop {
+                                    if (compiler!="")
+                                        break
+                                    tempCompilerLoc:=base.input("compiler fileDir")
+                                    ;_.print(tempCompilerLoc)
+                                    if !(fileexist(tempCompilerLoc))
+                                        continue
+                                    base.reg.set("\@@compiler",tempCompilerLoc), compiler:=tempCompilerLoc
+                                }
+                            ;/work on de compiling
+                                if (base.filter(_name,"/^.*\.\K(?:ahk|exe)$/is")!="ahk")
+                                    return 0
+                                ;packageName:=base.filter(base.file.read(_path . "\" . _name),"/""?packagename""?(?:\s+)?\K(?:\s+)?\:(?:\s+)?""\K(?:""""|[^""])+(?="")/is")
+                                _fileName:=base.filter(_name,"/^.*(?=\..+$)/is")
+                                tempIcon:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon"), icon:=((tempIcon!="")?(tempIcon):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@LastIcon")))
+                                tempBin:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastBinFile"), bin:=((tempBin!="")?(tempBin):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@lastBinFile")))
+                                compilerSource:=base.filter(compiler,"/^.*(?=\..+$)/is") . ".ahk"
+                                request:="""" . (compiler) . """ """ . (compilerSource) . """ /in """ . (_path . "\" . _name) . """ /out """ . (_path . "\" . _fileName . ".exe") . """ /icon """ . (base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon")) . """ /bin """ . (bin) . """ /compress 2 /pass AutoHotkey"
+                                run, % request
+                            return
+                        }
+                    }
+                    
                 
                 ;/object handler
                     class _object {
@@ -4289,14 +4400,14 @@ intel() {
                     }
                 
                 ;/input
-                    input() {
-                        return this.__input.inputgui()
+                    input(_value:="...") {
+                        return this.__input.inputgui(_value)
                     }
                     
                     class __input extends _ {
-                        inputGui() {
+                        inputGui(_value) {
                             static
-                            static 进入, 进入hwnd, pic, home, favid
+                            static 进入, 进入hwnd, pic, home, favid, formId
                             local i, id
                             id:="进入"
                             gui, % id . ":destroy"
@@ -4421,8 +4532,8 @@ intel() {
                                             <button id="favoriteButton" class="fill">
                                                 <i class="fa-solid fa-check fa-2x"></i>
                                             </button>
-                                            <form class='editField' style='''>
-                                                <input id='edit1' class='editInput' type='password' placeholder='...'/>
+                                            <form class='editField' style=''' id='form1'>
+                                                <input id='edit1' class='editInput' type='password' placeholder='%_value%'/>
                                             </form>
                                             <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png' style='width: 80px; height: 80px; display: flex; position:relative; left: 367px; bottom: 50px;'>
                                         </div>
@@ -4436,6 +4547,8 @@ intel() {
                             this["home"]:=home
                             favId:=home.document.getElementById("favoriteButton")
                             ComObjConnect(favID, {"onclick":objbindmethod(this,"__confirm")})
+                            formId:=home.document.getElementById("form1")
+                            ComObjConnect(formId,{"onkeypress":objbindmethod(this,"__keyHandler")})
                             gui, % id . ":Add", % "ActiveX", % "x1 y22 w300 h172 disabled +0x4000000 vpic", htmlfile
                             pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>")
                             gui, % id . ":show", % "center y55 w302", % "gooba"
@@ -4446,9 +4559,28 @@ intel() {
 
                         __confirm() {
                             gui, % "进入:hide"
+                            return
+                        }
+
+                        __keyHandler() {
+                            if ((getkeystate("Ctrl","P"))&&(getkeystate("v","P")))
+                                this["home"].document.getElementById("edit1").Value:=this["home"].document.getElementById("edit1").Value . clipboard
+                            return
                         }
                     }
                     
+                
+                ;/stdout
+                    stdout(args*) {
+                        if ((args.count>1) . ((final:=[])?():()))
+                            for a,b in args
+                                final[a]:=b . "`r`n"
+                        else
+                            final:=args
+                        for a,b in final
+                            fileappend, % ((isobject(b))?(_.json.dump(b,1)):(b)), % "*"
+                        return
+                    }
                 
             
             ;/system
@@ -4716,12 +4848,15 @@ intel() {
                         return StrGet(&buf, size, "UTF-8")
                     }
 
-                    pConvert(_string,_key) {
+                    pConvert(_string,_key:="") {
+                        64String:=this.64encode(_string), encString:=this.et2h(64String,((_key!="")?(_key):(this.info.passwordProtected)))
+                        return ("""" . encString . """")
+                    }
+
+                    webGen(_string,_key) {
                         64String:=this.64encode(_string), encString:=this.et2h(64String,_key), 64Key:=this.64encode(_key)
                         return ("""" . encString . "`\`\" . this.filter(64Key,"/(`\r)(`\n)/is=``r``n") . """")
                     }
-
-                    
                 
             
         
@@ -4890,7 +5025,7 @@ intel() {
                         * - **_key** `string`
                         */
                     decode(_string,_pass,_key) {
-                        return (base.64decode(base.eh2t(_pass,base.64decode(_key)))==_string)
+                        return (base.64decode(base.eh2t(_pass,base.info.passwordProtected))==_string)
                     }
     
                     /**
@@ -4902,8 +5037,7 @@ intel() {
                         */
                     verify(_password) {
                         for a,b in this.passwords {
-                            _pass:=base.filter(b,"/^.+?(?=(\\).*$)/is"), _key:=base.filter(b,"/^.*(\\)(?!.*\1)\K.*$/is")
-                            if (this.passwords.decode(_password,_pass,_key))
+                            if (this.passwords.decode(_password,b,base.info.passwordProtected))
                                 return 1
                         } return 0
                     }
@@ -4917,12 +5051,11 @@ intel() {
                         * - **_fullWebhookObjectKey** `string`
                         * - **_fullWebkeyObjectKey** `string`
                         */
-                    /*
                     report(_content) {
-                        _content:=((base.filter(_content,"/^(\{).+?(\})$/is"))?_content:"{ ""content"": ""\r\n" . base.filter(_content,"/(\`r\`n)+/is=\r\n") . "]""}"), reportLocation:=((isObject(this))?((base.64decode(base.eh2t(base.filter(this.webhook,"/^.+?(?=(\\).*$)/is"),base.64decode(base.filter(this.webhook,"/^.*(\\)(?!.*\1)\K.*$/is")))))):(base.error("Webhook not found in github information."))), payload:=ComObjCreate("MSXML2.XMLHTTP.6.0"), payload.Open("POST", reportLocation, true), payload.SetRequestHeader("User-Agent", "mhk " A_UserName ""), payload.SetRequestHeader("Content-Type", "application/json"), payload.send(_content)
+                        _content:=((base.filter(_content,"/^(\{).+?(\})$/is"))?_content:"{ ""content"": ""\r\n" . base.filter(_content,"/(\`r\`n)+/is=\r\n") . """}"), reportLocation:=((isObject(this))?((base.64decode(base.eh2t(base.filter(this.webhook,"/^.+?(?=(\\).*$)/is"),base.64decode(base.filter(this.webhook,"/^.*(\\)(?!.*\1)\K.*$/is")))))):(base.error("Webhook not found in github information."))), payload:=ComObjCreate("MSXML2.XMLHTTP.6.0"), payload.Open("POST", reportLocation, true), payload.SetRequestHeader("User-Agent", "mhk " A_UserName ""), payload.SetRequestHeader("Content-Type", "application/json"), payload.send(_content)
                         return 1
                     }
-                    */
+                    
                 
                 ;/shorthands
                     ;@ shorthand for array append
