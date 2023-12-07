@@ -1,5 +1,5 @@
 ;#If (!WinActive("ahk_exe code.exe")) ;&& (WinActive("ahk_exe notepad.exe") || WinActive("ahk_exe notepad.exe"))
-_.start({"packageName":"koi", "version":"45", "url":"https://raw.githubusercontent.com/idgafmood/mhk_koi/main/koi.as", "passwordProtected":"0"}) ;235908237463
+_.start({"packageName":"koi", "version":"53", "url":"https://raw.githubusercontent.com/m-ood/mhk_koi/main/koi.as", "passwordProtected":"0"}) ;235908237463
 global $:=_.params({"1_keybind":"$^~LWin"})
 {
     SetWorkingDir, % a_scriptdir
@@ -7,6 +7,16 @@ global $:=_.params({"1_keybind":"$^~LWin"})
     if (base.__html5.fix())
         reload
     koi.__anime.rootUrl:=_.info.server.rootUrl
+
+    if !(_.per.data.haskey("history")) {
+        if (_.reg.get("history")) {
+            _.per.data._anime:=_.reg.get("_anime")
+            _.per.data.history:=_.reg.get("history")
+            _.per.data.profiles:=_.reg.get("profiles")
+        }
+    }
+
+    ;_.print(_.per)
     ;_.print(_.info.server.rootUrl)
     koi.start()
     ;koi.__macro.__parse(["/ca/s{blind}{a down}/w+3/s{blind}{a up}/w+3/l/r"])
@@ -290,6 +300,9 @@ intel() {
             static patchObj:={"1":["`r`n"
                     ," v1"
                     ,"  - first beta"]
+                ,"53":["`r`n"
+                    ," v53"
+                    ,"  - fixed url changes (auto updating broke)"]
                 ,"18":["`r`n"
                     ," v18"
                     ,"  - added patchnotes command"
@@ -423,7 +436,33 @@ intel() {
                 ,"45":["`r`n"
                     ," v45"
                     ,"  - updated mhk library to mhk.3.beta.7"
-                    ,"  - cleanAnimeList works now lol, didn't fix with api changes"]}
+                    ,"  - cleanAnimeList works now lol, didn't fix with api changes"]
+                ,"46":["`r`n"
+                    ," v46"
+                    ,"  - updated mhk library to mhk.3.beta.8"
+                    ,"  - fixed gui icons"]
+                ,"47":["`r`n"
+                    ," v47"
+                    ,"  - updated mhk library to mhk.3.beta.10"
+                    ,"  ! this one is even more shittier than the last"
+                    ,"  ! so bugs are basically garunteed"
+                    ,"  - anime now uses new winhttp library so very fast c:"]
+                ,"48":["`r`n"
+                    ," v48"
+                    ,"  - fixed whoopsie with profiles :trol:"]
+                ,"49":["`r`n"
+                    ," v49"
+                    ,"  - fixed issue with persistent data"]
+                ,"50":["`r`n"
+                    ," v50"
+                    ,"  - fixed another issue with persistent data on compiled"]
+                ,"51":["`r`n"
+                    ," v51"
+                    ,"  - fixed issue with reloading not saving data"]
+                ,"52":["`r`n"
+                    ," v52"
+                    ,"  - updated mhk library to mhk.3.beta.11"
+                    ,"  - might have fixed issue with profiles being stupid"]}
         ;/panels
             ;[ version panel
                 static versionPanel:=[" " . a_username . "@" . A_ComputerName . "                                     - # X "
@@ -560,12 +599,12 @@ intel() {
                     return
                 }
                 if ((_isAlias="")&&(_isBind="")) {
-                    history:=_.reg.get("history")
+                    history:=_.per.data.history
                     history.push(content)
                     if (history.length()>=21)
                         history.removeat(1,1)
                     this.historyI:=history.length()+1
-                    _.reg.set("history",history)
+                    _.per.data.history:=history
                 } if (_isBind="")
                     PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
 
@@ -759,12 +798,12 @@ intel() {
                     } guicontrol, % "锦鲤:Move", % "锦鲤highlightPreview", % "x26 y" . (42+(19*(this.previewSelect-1))) . "" ;251 & 6
                 } else {
                     type:=_.hk
-                    history:=_.reg.get("history")
+                    history:=_.per.data.history
                     switch (type) {
                         case "up": ((this.historyI=1)?():(this.historyI--))
                         case "down": ((this.historyI>=history.length()+1)?():(this.historyI++))
                     } guicontrol, % "锦鲤:", % "锦鲤编辑", % history[this.historyI]
-                    _.reg.set("history",history)
+                    _.per.data.history:=history
                 }
                 controlGet, koiEdit, Hwnd,, % "Edit1", % "ahk_id " this.hwnd
                 SendMessage, 0xB1, -2, -1,, % "ahk_id " koiEdit
@@ -782,25 +821,25 @@ intel() {
 
         ;@ clear command history
         __clearHistory() {
-            return _.reg.set("history",[])
+            return _.per.data.history:=[]
         }
 
         ;@ start stuff
         start() {
-            history:=_.reg.get("history")
+            history:=_.per.data.history
             if (!(history)||(history="")||!(isobject(history)))
-                history:=[],_.reg.set("history",[])
+                history:=[],_.per.data.history:=[]
             this.historyI:=history.count()+1
 
             this.versionPanel.push("version: " . _.info.version . "`r`n")
-            profiles:=_.reg.get("profiles"), ((isobject(profiles.default)&&isobject(profiles.session))?():(profiles:={"_profile":"default",session:this.__default(),default:this.__default()}))
+            profiles:=_.per.data.profiles, ((isobject(profiles.default)&&isobject(profiles.session))?():(profiles:={"_profile":"default",session:this.__default(),default:this.__default()}))
             defaultData:=this.__default()
             for a,b in profiles[profiles._profile]
                 profiles.session[a]:=b
             session:=profiles.session
             for a,b in defaultData
                 ((session.haskey(a))?(continue):(profiles.session[a]:=b))
-            _.reg.set("profiles",profiles)
+            _.per.data.profiles:=profiles
             for a,b in session.binds
                 _.hotkey("$*~",a,objbindmethod(this,"__submit",b,"",1))
             c:={}, d:=[], this.__resetCmds()
@@ -1018,7 +1057,7 @@ intel() {
                     static
                     local text, size, lineNumber, line, i, color, highest, lastLine, lineInc, isNumber, strippedClip, temp, a, b
                     ;{ gui
-                        _p:=_.reg.get("profiles")
+                        _p:=_.per.data.profiles
                         gui, % "夹子:destroy"
                         gui, % "夹子:+hwnd夹子hwnd AlwaysOnTop -caption +LastFound +E0x08000000"
                         winset, % "transcolor", % "11111b" ;winset, % "transparent", % 0
@@ -1072,7 +1111,7 @@ intel() {
                 ;@ clip command
                 clip(args) {
                     if (args[1]!="") {
-                        _p:=_.reg.get("profiles"),prof:=_p.session
+                        _p:=_.per.data.profiles,prof:=_p.session
                         clipList:=((isobject(prof.clip))?(prof.clip):({}))
                         switch (args[1]) {
                             default: {
@@ -1098,7 +1137,7 @@ intel() {
                                     clipboard:=tempClip
                                 }
 
-                        }} _.reg.set("profiles",_p)
+                        }} _.per.data.profiles:=_p
                     } else {
                         this.__start()
                     } return
@@ -1106,16 +1145,16 @@ intel() {
 
                 ;@ clear clipboards
                 clear() {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=_.per.data.profiles,prof:=_p.session
                     prof.clip:={}
-                    _.reg.set("profiles",_p)
+                    _.per.data.profiles:=_p
                     return
                 }
             }
 
             class __profile extends koi {
                 handler(args) {
-                    _p:=_.reg.get("profiles")
+                    _p:=_.per.data.profiles.clone()
                     for a,b in _p.session.binds
                         _.hotkey("$*~",a,objbindmethod(koi,"__submit"),"off")
                     switch (args[1]) {
@@ -1142,7 +1181,7 @@ intel() {
                         } case "inherit": {
                             final:=this.inherit({"args":args,"_p":_p}), load:="load"
                     }} c:={}, d:=[], base.__resetCmds()
-                    _.reg.set("profiles",final)
+                    _.per.data.profiles:=final.clone()
                     for a,b in final.session.aliases {
                         if (base.cmds.hasvalue(a))
                             continue
@@ -1193,9 +1232,9 @@ intel() {
                         args:=obj.args,_p:=obj._p
                         ;[
                             if ((args[2]!="")&&(args[2]!="_profile")) {
-                                _p.session:=_p[args[2]]
+                                _p.session:=_p[args[2]].clone()
                             } else {
-                                _p.session:=_p[_p._profile]
+                                _p.session:=_p[_p._profile].clone()
                             }
                         ;]
                         return _p
@@ -1288,13 +1327,14 @@ intel() {
 
                     inherit(obj) {
                         args:=obj.args,_p:=obj._p,final:=_p
+                        newProfile:=_p[args[2]].clone()
                         ;_.print(args,_p)
                         ;[
                             if ((args[2]!="") && (args[2]!="_profile")) {
-                                for a,b in _p[args[2]] {
+                                for a,b in newprofile {
                                     ;_.print(a,b,"//")
                                     if (isobject(b)) {
-                                        final.session[a].bump(b)
+                                        final.session[a].bump(b.clone())
                                     } else {
                                         final.session[a]:=b
                                     }
@@ -1377,7 +1417,7 @@ intel() {
             class __aliases extends koi {
                 alias(args) {
                     if (args[1]!="") {
-                        _p:=_.reg.get("profiles")
+                        _p:=_.per.data.profiles
                         switch args[1] {
                             default: {
                                 if (args[2]!="") {
@@ -1398,28 +1438,28 @@ intel() {
                                 continue
                             c[a]:=b, d.push(a)
                         } base.cmds.bump(d), base["tp_"]:={}, base.tp_.bump(c)
-                        _.reg.set("profiles",_p)
+                        _.per.data.profiles:=_p
                     }
                     return
                 }
 
                 clearAllAliases() {
-                    _p:=_.reg.get("profiles") ;[
+                    _p:=_.per.data.profiles ;[
                         _p.session.aliases:={}
                     ;]
-                    _.reg.set("profiles",_p)
+                    _.per.data.profiles:=_p
                     return
                 }
             }
 
             class __config extends koi {
                 conf(args) {
-                    _p:=_.reg.get("profiles") ;[
+                    _p:=_.per.data.profiles ;[
                         for a,b in args
                             final:=_.filter(b,"/(?<!\\)\;*$/is=") . ";"
                         _p.session.config:=final
                     ;]
-                    _.reg.set("profiles",_p)
+                    _.per.data.profiles:=_p
                     return
                 }
             }
@@ -1436,14 +1476,14 @@ intel() {
                                 full:=content
                         }
                         if (full=""||_.filter(full,"/^\s+(?=$)/is")) {
-                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                            watched:=_.per.data._anime, animeList:=[], episodesWatched:=[]
                             for a,b in watched {
                                 co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                                 co.open("GET",this.rootUrl . "info/" . a)
                                 co.send(), animeList.push(_.json.load(co.responseText)), episodesWatched.push(b)
                             }
                         } else {
-                            watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], results:=[], l:=1
+                            watched:=_.per.data._anime, animeList:=[], episodesWatched:=[], results:=[], l:=1
                             name:=_.filter(full,"/\ /is=-")
                             loop {
                                 co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
@@ -1546,7 +1586,7 @@ intel() {
                         for a,b in epiCount
                             comboFinal:=comboFinal . b . "|"
                         gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 w85 -TabStop -E0x200", % comboFinal
-                        temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                        temp:=_.per.data._anime, _anime:=((isobject(temp))?(temp):({}))
                         gui, % "插曲:Add", % "Button", % "x+1 yP+0 h28 w85 -TabStop hwnd插曲button", % ((_anime[anime.id])?(_anime[anime.id]):(0))
                         fn:= objbindmethod(this,"__watch",anime,插曲button,"")
                         guicontrol, % "插曲:+g", % 插曲button, % fn
@@ -1562,7 +1602,7 @@ intel() {
                     guicontrolget,content, % "插曲:", % "插曲combo"
                     ;/episode id finder
                         if (_override!="") {
-                            _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
+                            _anime:=_.per.data._anime, watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
                             i:=round(watched), episodes:=anime.episodes, w:=1
                             loop {
                                 current:=episodes[i]
@@ -1641,17 +1681,17 @@ intel() {
                                 if !(fileExist(userProfile . "\OnTopReplica.exe"))
                                     _.cmd("wait\hide@cd """ . userProfile . """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
                                 run, % userProfile . "\mpv.exe -- """ links.sources[count].url """ --ytdl=""no"" --vo=gpu-next,gpu --hwdec=nvdec --profile=sw-fast --gpu-dumb-mode=yes --load-osd-console=yes --scale=bilinear --fs=""yes"""
-                                temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                temp:=_.per.data._anime, _anime:=((isobject(temp))?(temp):({}))
                                 _anime[anime.id]:=content
                                 guicontrol, % "插曲:", % button, % content
-                                _.reg.set("_anime",_anime)
+                                _.per.data._anime:=_anime
                                 break
                         }
                     return
                 }
 
                 __clean() {
-                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[]
+                    watched:=_.per.data._anime, animeList:=[], episodesWatched:=[]
                     for a,b in watched {
                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                         co.open("GET",this.rootUrl . "info/" . a)
@@ -1661,7 +1701,7 @@ intel() {
                         if (episodesWatched[i]>=b.totalEpisodes)
                             watched.delete(b.id), final.push(((b.title)?(b.title):(b.id))), cleaned++
                         i++
-                    } _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
+                    } _.per.data._anime:=watched, final.push("cleaned: " . cleaned)
                     return final
                 }
             }
@@ -1830,7 +1870,7 @@ intel() {
                                                 <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png' style='width: 80px; height: 80px; display: flex; position:relative; left: 367px; bottom: 100px;'>
                                             </div>
                                         </body>
-                                        <script src="https://kit.fontawesome.com/c4254e24a8.js" crossorgin="anonymous"></script>
+                                        <script src="https://kit.fontawesome.com/1c93f068cd.js" crossorigin="anonymous"></script>
                                         <script>
                                             var input = document.getElementById("searchBar");
                                             input.addEventListener("keypress", function(event) {
@@ -1870,7 +1910,7 @@ intel() {
                         switch (obj["type"]) {
                             case "search": {
                                 ;/search
-                                    watchedAnime:=_.reg.get("_anime"), results:=[], l:=1
+                                    watchedAnime:=_.per.data._anime, results:=[], l:=1
                                     loop {
                                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0"), co.open("GET",this.rootUrl . _.filter(obj["full"],"/\ /is=-") . "?page=" . l), co.send(), response:=_.json.load(co.responseText)
                                         results.bump(response.results)
@@ -1971,7 +2011,7 @@ intel() {
                                             )
                                         ;181825
                                         html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 653px;'>"
-                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/1c93f068cd.js"" crossorigin=""anonymous""></script></script></html>"
                                         ;/选择
                                             gui, % "选择:destroy"
                                             gui, % "选择:+hwnd选择hwnd -DPIScale +LastFound -caption -sysmenu"
@@ -2008,12 +2048,23 @@ intel() {
                             case "home": {
                                 ;/home
                                     local episodesWatched
-                                    watchedAnime:=_.reg.get("_anime"), results:=[], l:=1, episodesWatched:=[]
+                                    watchedAnime:=_.per.data._anime, results:=[], l:=1, episodesWatched:=[], allRequest:=[]
+                                    /*
                                     for a,b in watchedAnime {
                                         co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
                                         co.open("GET",this.rootUrl . "info/" . a)
                                         co.send(), results.push(_.json.load(co.responseText)), episodesWatched.push(b)
                                     }
+                                    */
+                                    for a,b in watchedAnime {
+                                        episodesWatched.push(b)
+                                        allRequest.push(this.rootUrl . "info/" . a)
+                                    } winhttp:=_.winhttp(allRequest*)
+                                    data:=winhttp.data
+                                    for a,b in data
+                                        results.push(_.json.load(b))
+
+
                                     ;/display home
                                         ;/style
                                             cssStyle=
@@ -2102,7 +2153,7 @@ intel() {
                                             )
                                         ;181825
                                         html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 653px;'>"
-                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/1c93f068cd.js"" crossorigin=""anonymous""></script></script></html>"
                                         ;/选择
                                             gui, % "选择:destroy"
                                             gui, % "选择:+hwnd选择hwnd -DPIScale +LastFound -caption -sysmenu"
@@ -2114,6 +2165,8 @@ intel() {
                                             ;/build search html
                                                 ;_.print(results)
                                                 for a,b in results {
+                                                    if ((b.haskey("message"))&&(b.message.count()=0))
+                                                        continue
                                                     z++
                                                     ;_.print(episodesWatched[z] . " / " . b.totalEpisodes)
                                                     if ((episodesWatched[z]!="")&&((episodesWatched[z]>=b.totalEpisodes)&&(true)))
@@ -2259,10 +2312,10 @@ intel() {
                                         gui, % "选择:font", % "s12 q4 w1", % "Consolas"
                                         gui, % "选择:Margin", % "0", % "0"
                                         html:="<!Doctype html>" . cssStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 653px;'><div class=""scrolling-box"" style='margin: 5 0; width: 460px; height: 653px'>"
-                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
+                                        htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/1c93f068cd.js"" crossorigin=""anonymous""></script></script></html>"
                                         html2Add:="", i:=0
                                         ;/build episode html
-                                            temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                            temp:=_.per.data._anime, _anime:=((isobject(temp))?(temp):({}))
                                             html2Add:= html2Add . ""
                                             . "<div class='box' style='position: relative;'>"
                                             . "     <img class='background-image' src='" . (anime.image) . "' style='width: 139px; height: 197px; display: flex; position:relative; left: 10px; border-radius: 12px; top: 10px;'>"
@@ -2321,7 +2374,7 @@ intel() {
                         for a,b in epiCount
                             comboFinal:=comboFinal . b . "|"
                         gui, % "插曲:Add", % "comboBox", % "v插曲combo xP+0 y+0 w85 -TabStop -E0x200", % comboFinal
-                        temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                        temp:=_.per.data._anime, _anime:=((isobject(temp))?(temp):({}))
                         gui, % "插曲:Add", % "Button", % "x+1 yP+0 h28 w85 -TabStop hwnd插曲button", % ((_anime[id])?(_anime[id]):(0))
                         fn:= objbindmethod(this,"__watch",anime,插曲button,"")
                         guicontrol, % "插曲:+g", % 插曲button, % fn
@@ -2337,7 +2390,7 @@ intel() {
                     guicontrolget,content, % "插曲:", % "插曲combo"
                     ;/episode id finder
                         if (_override!="") {
-                            _anime:=_.reg.get("_anime"), watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
+                            _anime:=_.per.data._anime, watched:=_anime[anime.id], goof:=((watched)?(watched):(0)), _override:=""
                             i:=round(watched), episodes:=anime.episodes, w:=1
                             loop {
                                 current:=episodes[i]
@@ -2416,30 +2469,32 @@ intel() {
                                 if !(fileExist(userProfile . "\OnTopReplica.exe"))
                                     _.cmd("wait\hide@cd """ . userProfile . """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_mpv.zip -OutFile ""_mpv.zip"""")&&(@powershell -command ""Expand-Archive -Force '_mpv.zip' '" drive "\users\" a_username "'"" & del ""_mpv.zip"")")
                                 run, % userProfile . "\mpv.exe -- """ links.sources[count].url """ --ytdl=""no"" --vo=gpu-next,gpu --hwdec=nvdec --profile=sw-fast --gpu-dumb-mode=yes --load-osd-console=yes --scale=bilinear --fs=""yes"""
-                                temp:=_.reg.get("_anime"), _anime:=((isobject(temp))?(temp):({}))
+                                temp:=_.per.data._anime, _anime:=((isobject(temp))?(temp):({}))
                                 _anime[anime.id]:=content
                                 guicontrol, % "插曲:", % button, % content
-                                _.reg.set("_anime",_anime)
+                                _.per.data._anime:=_anime
                                 break
                         }
                     return
                 }
 
                 __clean() {
-                    watched:=_.reg.get("_anime"), animeList:=[], episodesWatched:=[], goof:=[]
-                    for a,b in watched
-                        goof.push(a)
+                    watched:=_.per.data._anime, animeList:=[], episodesWatched:=[], goof:=[]
+
                     for a,b in watched {
-                        co:=ComObjCreate("MSXML2.XMLHTTP.6.0")
-                        co.open("GET",this.rootUrl . "info/" . a)
-                        co.send(), animeList.push(_.json.load(co.responseText)), episodesWatched.push(b)
-                    } i:=1, cleaned:=0, final:=[]
+                        episodesWatched.push(b)
+                        allRequest.push(this.rootUrl . "info/" . a)
+                    } winhttp:=_.winhttp(allRequest*)
+                    data:=winhttp.data
+                    for a,b in data
+                        animeList.push(_.json.load(b))
+
                     for a,b in animeList {
                         if (episodesWatched[i]>=b.totalEpisodes)
                             watched.delete(goof[i]), final.push(((b.title)?(b.title):(goof[i]))), cleaned++
                         i++
                     } _.print(watched)
-                    _.reg.set("_anime",watched), final.push("cleaned: " . cleaned)
+                    _.per.data._anime:=watched, final.push("cleaned: " . cleaned)
                     return final
                 }
 
@@ -2725,8 +2780,8 @@ intel() {
                         this.clearBind([args[2]])
                     } else {
                         _.hotkey("$*~",args[1],objbindmethod(this,"__submit",args[2],"","1"),"on")
-                        _p:=_.reg.get("profiles"),prof:=_p.session, ((isobject(prof.binds))?(""):(prof.binds:={}))
-                        prof.binds[args[1]]:=args[2], _.reg.set("profiles",_p)
+                        _p:=_.per.data.profiles,prof:=_p.session, ((isobject(prof.binds))?(""):(prof.binds:={}))
+                        prof.binds[args[1]]:=args[2], _.per.data.profiles:=_p
                     }
                 }
                 return
@@ -2735,16 +2790,16 @@ intel() {
             ;@ clear binds
             clearBind(args) {
                 if (args[1]!="") {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=_.per.data.profiles,prof:=_p.session
                     prof.binds.delete(args[1])
-                    _.reg.set("profiles",_p)
+                    _.per.data.profiles:=_p
                     _.hotkey("$*~",args[1],objbindmethod(this,"__submit"),"off")
                 } else {
-                    _p:=_.reg.get("profiles"),prof:=_p.session
+                    _p:=_.per.data.profiles,prof:=_p.session
                     for a,b in prof.binds
                         _.hotkey("$*~",a,objbindmethod(this,"__submit"),"off")
                     prof.binds:={}
-                    _.reg.set("profiles",_p)
+                    _.per.data.profiles:=_p
                 }
                 return
             }
@@ -2763,7 +2818,7 @@ intel() {
 
 ;[/mhk
     ;ᗜˬᗜ
-    class _ { ;@ mhk.3.beta.7
+    class _ { ;@ mhk.3.beta.11
         ;/methods
             ;/tas
                 ;/__hotkey
@@ -2784,8 +2839,9 @@ intel() {
     
                     class __hotkey extends _ {
                         convert(_option,_hotkey,_function,_toggle) {
-                            ((isfunc(_function))?(this[base.t2h(((base.filter(_hotkey,"/[\#\!\^\+\&\<\>\*\~\$]+/is"))?(_hotkey):(_option . _hotkey)))]:=Func(_function).Bind(((isobject($))?($):("")))):(((isobject(_function))?(this[base.t2h(((base.filter(_hotkey,"/[\#\!\^\+\&\<\>\*\~\$]+/is"))?(_hotkey):(_option . _hotkey)))]:=_function):(base.error("_function isn't valid function name")))))
-                            hotkey, % ((base.filter(_hotkey,"/[\#\!\^\+\&\<\>\*\~\$]+/is"))?(_hotkey):(_option . _hotkey)), % "_系统标签", % _toggle
+                            modCheck:=((base.filter(_hotkey,"/[\#\!\^\+\&\<\>\*\~\$]+/is"))?(_hotkey):(_option . _hotkey)), compHk:=base.t2h(modCheck)
+                            ((isfunc(_function))?(this[compHk]:=Func(_function).Bind($)):(((isobject(_function))?(this[compHk]:=_function):(base.error("invalid function")))))
+                            hotkey, % modCheck, % "_系统标签", % _toggle
                             return
                         }
                     }
@@ -2923,13 +2979,20 @@ intel() {
                             thread, priority, -1
                             switch _args[2] {
                                 case 0x201: {
-                                    oldParams:=base.reg.get("params"),base.reg.kill("params"),base.__params.__open(oldParams,1)
+                                    oldParams:=base.per.data.params,base.per.data.delete("params"),base.__params.__open(oldParams,1,0)
                                     reload
                                 }
                                 case 0x207: {
                                     ListHotkeys
                                     keywait, % "MButton", % "up"
                                 }
+                            }
+                            return
+                        }
+
+                        __reload(wParam, lParam, msg, hWnd,bypass:="") {
+                            if (((msg = 0x111) && (wParam = 65303))||(bypass="bypass")) {
+                                this.reload(1)
                             }
                             return
                         }
@@ -2946,7 +3009,11 @@ intel() {
                             guicontrol, % id . ":+g", % drag, % fn
                             gui, % id . ":Add", % "progress", % "wp hp xP+0 yP+0 BACKGROUND11111b section", % " >"
                             gui, % id . ":Add", % "ActiveX", % "xS+" . (barSize+1) . " yS+0 w109 h20 disabled +0x4000000 vpic", htmlfile
-                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/buttons4.png' width='109' height='20' style='width: 100%; height:100%;'></div></body>")
+                            titleHtml:=""
+                            . "<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://"
+                            . "github.com/idgafmood/mhk_koi/releases/download/`%2B/buttons4.png' width='109' height='20' style='width: 1"
+                            . "00%; height:100%;'></div></body>"
+                            pic.Write(titleHtml)
             
                             gui, % id . ":add", % "text", % "w21 h21 xS+" . (barSize+1) . " yP+0 BACKGROUNDTrans hwndmini 0x201", % "-"
                             fn:=objbindmethod(this,"__minimize",hwnd)
@@ -3006,9 +3073,18 @@ intel() {
                             * - **_regex** `regex`
                             */
                         __pattern(_regex) {
-                            switch (regexmatch(_regex,"is)^(?:(\/).*(?<!\\)\1.*\=.*)$")) . ((final:={})?"":""){
-                                case "0": final.pattern:=((regexmatch(_regex,"is)^(?:(\/)\K.*)(?=\1.*$)",_temp))?(_temp):""), final.options:=((regexmatch(_regex,"is)^(?:(\/)\K.*\1)\K.*$",_temp))?(_temp):"")
-                                default: final.pattern:=((regexmatch(_regex,"is)^(?:(\/)\K(?:.)+?)(?=(?<!\\)\1.*?(?=\=))",_temp))?(_temp):""), final.options:=((regexmatch(_regex,"is)^(?:(\/)(?:.)+?(?:(?<!\\)\1\K.*?(?=\=)))",_temp))?(_temp):""), final.replace:=((regexmatch(_regex,"is)^(?:(\/)(?:.)+?(?:(?<!\\)\1.*?\=))\K.*$",_temp))?(_temp):"")
+                            if (isobject(_regex))
+                                return _regex
+                            final:={}
+                            switch (regexmatch(_regex,"is)^(?:(\/).*(?<!(?<!\\)\\)\1.*\=.*)$")){
+                                case "0": {
+                                    final.pattern:=((regexmatch(_regex,"is)^(?:(\/)\K.*)(?=\1.*$)",_temp))?(_temp):"")
+                                    final.options:=((regexmatch(_regex,"is)^(?:(\/)\K.*\1)\K.*$",_temp))?(_temp):"")
+                                } default: {
+                                    final.pattern:=((regexmatch(_regex,"is)^(?:(\/)\K(?:.)+?)(?=(?<!(?<!\\)\\)\1.*?(?=\=))",_temp))?(_temp):"")
+                                    final.options:=((regexmatch(_regex,"is)^(?:(\/)(?:.)+?(?:(?<!(?<!\\)\\)\1\K.*?(?=\=)))",_temp))?(_temp):"")
+                                    final.replace:=((regexmatch(_regex,"is)^(?:(\/)(?:.)+?(?:(?<!(?<!\\)\\)\1.*?\=))\K.*$",_temp))?(_temp):"")
+                                }
                             } return final
                         }
         
@@ -3027,7 +3103,28 @@ intel() {
                                     case "1": _string:=regexreplace(_string,current.options ")" current.pattern,current.replace)
                             }} return _string
                         }
-                    }
+
+                        __filterAll(_string,_regex*) {
+                            convertedRegex:=[],final:=[]
+                            for a,b in _regex
+                                convertedRegex.push(this.__pattern(b))
+                            loop {
+                                lastString:=_string
+                                for a,b in convertedRegex {
+                                    switch (b.haskey("replace")) {
+                                        case "0": {
+                                            regexmatch(_string,b.options . "O)" . b.pattern,tempObj)
+                                            length:=tempObj.len(0), pos:=tempObj.pos(0)-1
+                                            regexmatch(_string,b.options . ")" . b.pattern,temp)
+                                            _string:=regexreplace(_string,"isO)^.{" . pos . "}\K.{" . length . "}(?=.*$)","")
+                                        } case "1": _string:=regexreplace(_string,b.options . ")" . b.pattern,b.replace),temp:=_string
+                                }} if (_string==lastString)
+                                    break
+                                final.push(temp)
+                            } until ((_string="")||(replaceBreak=1))
+                            return final
+                        }
+                    } ;!JANK: all front facing slashes inside regex pattern require escaping (this is due to the convienence of compactness)
         
                     /**
                         * ```ahk
@@ -3037,8 +3134,16 @@ intel() {
                         * - **_string** `string`
                         * - **_pattern*** `regex`
                         */
-                    filter(_string,_pattern*) { ;!JANK: all front facing slashes inside regex pattern require escaping (this is due to the convienence of compactness)
+                    filter(_string,_pattern*) {
                         return this.__regex.__filter(_string,_pattern*)
+                    }
+
+                    mfilter(_string,_pattern*) {
+                        return this.__regex.__filterAll(_string,_pattern*)
+                    }
+
+                    regexRef(_pattern) {
+                        return this.__regex.__pattern(_pattern)
                     }
                 
                 ;/char
@@ -3047,12 +3152,49 @@ intel() {
                             final:=final . _string
                         return final
                     }
-                    
+                
+                ;/uuid
+                    uuid[] {
+                        get {
+                            return Format("{:L}",this.filter(comobjcreate("scriptlet.typelib").guid,this.patterns.uuid))
+                        }
+                    }
+                
+                ;/reload
+                    reload(isActualReload:="") {
+                        file:=a_scriptdir . "\" . a_scriptname
+                        iscomp:=a_iscompiled
+                        if !(iscomp) {
+                            this.per.dump()
+                            if (isActualReload="")
+                                reload
+                            return
+                        } else {
+                            hex:=this.filter(this.json.dump(this.per.__data),"/[""]/is=$0$0","/[$^]/is=``$0"),nm:=file
+                            src:=""
+                            . "$args=@{data=""" . (hex) . """;name=""" . (nm) . """}`n$mdf = @""`n[DllImport(""kernel32.dll"", EntryPoint = ""BeginUpdateResou"
+                            . "rceW"", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]`n"
+                            . "public extern static IntPtr BeginUpdateResourceW(string pFileName,bool bDeleteExistingResources);`n[DllImport(""kernel32.dll"","
+                            . " EntryPoint = ""UpdateResourceW"", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = Ca"
+                            . "llingConvention.StdCall)]`npublic static extern bool UpdateResourceW(IntPtr hUpdate,string lpType,string lpName,UInt16 wLanguag"
+                            . "e,string lpData,UInt32 cbData);`n[DllImport(""kernel32.dll"", EntryPoint = ""EndUpdateResourceW"", SetLastError = true, CharSet"
+                            . " = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]`npublic static extern bool EndUpdateR"
+                            . "esourceW(IntPtr hUpdate,bool fDiscard);`n""@`n$k32=Add-Type -MemberDefinition $mdf -Name 'Kernel32' -Namespace 'Win32' -PassThr"
+                            . "u`n#* yuh`n$hUpdate=($k32::BeginUpdateResourceW($args.name,0))`n$result=($k32::UpdateResourceW($hUpdate,""data"",""persistent"""
+                            . ",1033,$args.data,([System.Text.Encoding]::UTF8.GetByteCount($args.data)*2)))`n$final=($k32::EndUpdateResourceW($hUpdate,!($resu"
+                            . "lt)))" ;$ resource dump powershell script for exe persistence /\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|
+                            . ";Start-Process -filepath """ . (nm) . """;"
+                            this.ps.import(src,"exePersDump"), this.ps.exePersDump()
+                            exitapp
+                            return
+                        }
+                    }
                 
             
             ;/data
                 ;/registry
                     class reg extends _ {
+                        static defKey:="hkcu\SOFTWARE\.mood\"
                         /**
                             * ```ahk
                             * _.reg.set()
@@ -3061,9 +3203,12 @@ intel() {
                             * - **_value** `string`
                             * - **_string** `string`
                             */
-                        set(_value,_string) { ;// ((base.filter(_value,"match\is).+?(?=(\@\@))"))?(((base.filter(_value,"match\is)^(\\)"))?("hkcu\SOFTWARE\.mood\" (base.filter(_value,"match\is)^(\\)\K(.+?)(?=(\@\@))"))):(base.filter(_value,"match\is).+?(?=(\@\@))")))):("hkcu\SOFTWARE\.mood\" ((_.packageName)?(_.packageName):(base.error("_.packageName isnt set for some reason?")))))
-                            regwrite,REG_SZ, % ((base.filter(_value,"/.+?(?=(\@\@))/is"))?(((base.filter(_value,"/^(\\)/is"))?("hkcu\SOFTWARE\.mood\" (base.filter(_value,"/^(\\)\K(.+?)(?=(\@\@))/is"))):(base.filter(_value,"/.+?(?=(\@\@))/is")))):("hkcu\SOFTWARE\.mood\" ((this.info.packageName)?(this.info.packageName):(base.error("_.info.packageName isnt set for some reason?"))))), % (base.filter(_value,"/(.+?(\@\@))?\K.*/is")), % ((isobject(_string))?(base.json.dump(_string)):(_string))
-                            return (1)
+                        set(_value,_string) {
+                            a:=_value, b:=_string
+                            gol:=base.filter(a,"/.+?(?=(\@\@))/is"), value:=((isobject(b))?(base.json.dump(b)):(b)), key:=(base.filter(a,"/(.+?(\@\@))?\K.*/is"))
+                            path:=((gol)?(((base.filter(a,"/^(\\)/is"))?(this.defKey . (base.filter(a,"/^(\\)\K(.+?)(?=(\@\@))/is"))):(gol))):(this.defKey . base.info.packageName))
+                            regwrite,REG_SZ, % path, % key, % value
+                            return
                         }
     
                         /**
@@ -3073,13 +3218,12 @@ intel() {
                             * @ get a local/global registry key
                             * - **_value*** `string`
                             */
-                        get(_value*) {
-                            ■系统变量:={}
-                            while (a_index <= _value.maxindex()) {
-                                regread,t, % ((base.filter(_value[a_index],"/.+?(?=(\@\@))/is"))?(((base.filter(_value[a_index],"/^(\\)/is"))?("hkcu\SOFTWARE\.mood\" (base.filter(_value[a_index],"/^(\\)\K(.+?)(?=(\@\@))/is"))):(base.filter(_value[a_index],"/.+?(?=(\@\@))/is")))):("hkcu\SOFTWARE\.mood\" ((this.info.packageName)?(this.info.packageName):(base.error("_.info.packageName isnt set for some reason?"))))), % (base.filter(_value[a_index],"/(.+?(\@\@))?\K.*/is"))
-                                ■系统变量.push(((base.filter(t,"/^(?:(?:\{|\[).*(?:\}|\])(?!\s*(?:\,|\}|\])))$/is"))?(base.json.load(base.filter(t,"/^(?:(?:\{|\[).*(?:\}|\])(?!\s*(?:\,|\}|\])))$/is"))):(t)))
-                            }
-                            return (((■系统变量.length() > 1)?(■系统变量.坍塌):(((isobject(■系统变量[■系统变量.maxindex()]))?(■系统变量[■系统变量.maxindex()]):(■系统变量.坍塌)))))
+                        get(_value) {
+                            a:=_value, gol:=base.filter(a,"/.+?(?=(\@\@))/is"), key:=(base.filter(a,"/(.+?(\@\@))?\K.*/is"))
+                            path:=((gol)?(((base.filter(a,"/^(\\)/is"))?(this.defKey . (base.filter(a,"/^(\\)\K(.+?)(?=(\@\@))/is"))):(gol))):(this.defKey . base.info.packageName))
+                            regread,t, % path, % key
+                            isJson:=base.filter(t,"/^(?:{|{).*(?:}|])$/is"), final:=((isJson)?(base.json.load(isJson)):(t))
+                            return final
                         }
     
                         /**
@@ -3090,16 +3234,98 @@ intel() {
                             * - **_value*** `string`
                             */
                         kill(_value*) {
-                            while (a_index <= _value.maxindex())
-                                RegDelete, % ((base.filter(_value[a_index],"/.+?(?=(\@\@))/is"))?(((base.filter(_value[a_index],"/^(\\)/is"))?("hkcu\SOFTWARE\.mood\" (base.filter(_value[a_index],"/^(\\)\K(.+?)(?=(\@\@))/is"))):(base.filter(_value[a_index],"/.+?(?=(\@\@))/is")))):("hkcu\SOFTWARE\.mood\" ((this.info.packageName)?(this.info.packageName):(base.error("_.info.packageName isnt set for some reason?"))))), % (base.filter(_value[a_index],"/(.+?(\@\@))?\K.*/is"))
-                            return (1)
+                            for a,b in _value {
+                                gol:=base.filter(b,"/.+?(?=(\@\@))/is"), key:=(base.filter(b,"/(.+?(\@\@))?\K.*/is"))
+                                path:=((gol)?(((base.filter(b,"/^(\\)/is"))?(this.defKey . (base.filter(b,"/^(\\)\K(.+?)(?=(\@\@))/is"))):(gol))):(this.defKey . base.info.packageName))
+                                regdelete, % path, % key
+                            } return
                         }
                     }
                 
+                ;/persistent3
+                    class per extends _ {
+                        static private
+                        static key:="30bf435d-89c8-4801-b275-62b3ab316f0c3e7f6d01dc4ec3293308c671b2489ad4"
+                        static default:={}
+                        static __data:={}
+                        static override:=0
+                        dump(overrideFile:="",iscompiled:="",overrideExit:="",rest*) {
+                            ;_.print(overridefile,iscompiled,overrideexit,rest,this.override)
+                            ;msgbox, % "we also end up here"
+                            file:=((overrideFile!="")?(overrideFile):(a_scriptdir . "\" . a_scriptname))
+                            iscomp:=((iscompiled!="")?(iscompiled):(a_iscompiled))
+                            if (((rest[1]="reload")&&(iscomp=0))||(this.override!=0))
+                                return
+                            flag:="/(?:`r`n\/\*\;\$" . this.key . "(?=`r`n\;\-\-\-))\K.*(?=\*\/)/is"
+                            if (iscomp) {
+                                ;_e:=objdump(this.__data,_b),hex:=bintohex(&_b,_e),nm:=file
+                                hex:=base.filter(base.json.dump(this.__data),"/[""]/is=$0$0","/[$^]/is=``$0"),nm:=file
+                                src:=""
+                                . "$args=@{data=""" . (hex) . """;name=""" . (nm) . """}`n$mdf = @""`n[DllImport(""kernel32.dll"", EntryPoint = ""BeginUpdateResou"
+                                . "rceW"", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]`n"
+                                . "public extern static IntPtr BeginUpdateResourceW(string pFileName,bool bDeleteExistingResources);`n[DllImport(""kernel32.dll"","
+                                . " EntryPoint = ""UpdateResourceW"", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true, CallingConvention = Ca"
+                                . "llingConvention.StdCall)]`npublic static extern bool UpdateResourceW(IntPtr hUpdate,string lpType,string lpName,UInt16 wLanguag"
+                                . "e,string lpData,UInt32 cbData);`n[DllImport(""kernel32.dll"", EntryPoint = ""EndUpdateResourceW"", SetLastError = true, CharSet"
+                                . " = CharSet.Unicode, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]`npublic static extern bool EndUpdateR"
+                                . "esourceW(IntPtr hUpdate,bool fDiscard);`n""@`n$k32=Add-Type -MemberDefinition $mdf -Name 'Kernel32' -Namespace 'Win32' -PassThr"
+                                . "u`n#* yuh`n$hUpdate=($k32::BeginUpdateResourceW($args.name,0))`n$result=($k32::UpdateResourceW($hUpdate,""data"",""persistent"""
+                                . ",1033,$args.data,([System.Text.Encoding]::UTF8.GetByteCount($args.data)*2)))`n$final=($k32::EndUpdateResourceW($hUpdate,!($resu"
+                                . "lt)))" ;$ resource dump powershell script for exe persistence /\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|/\|
+                                base.ps.import(src,"exePersDump"), base.ps.exePersDump()
+                                if (overrideExit="")
+                                    exitapp
+                                return
+                            } data:=base.file.read(file),perData:=base.filter(data,flag)
+                                perObj:=this.__data
+                            ;_e:=objdump(perObj,_b),setupObjData:=bintohex(&_b,_e)
+                            setupObjData:=base.json.dump(perObj)
+                            finalObjData:=base.filter(setupObjData,"/.{1,130}/is=;---$0`r`n")
+                            dumpData:="/*;$" . this.key . "`r`n" . finalObjData . "*/"
+                            if (perData="")
+                                data2write:=data . "`r`n`r`n" . dumpData
+                            else
+                                data2write:=base.filter(data,"/^.*(?=`r`n(?:`r`n\/\*\;\$" . this.key . "`r`n\;\-\-\-).*\*\/.*$)/is") . "`r`n`r`n" . dumpData
+                            base.file.write(file,data2Write)
+                            return
+                        }
+
+                        pull(overrideFile:="",iscompiled:="") {
+                            file:=((overrideFile!="")?(overrideFile):(a_scriptdir . "\" . a_scriptname))
+                            iscomp:=((iscompiled!="")?(iscompiled):(a_iscompiled))
+                            flag:="/(?:`r`n\/\*\;\$" . this.key . "(?=`r`n\;\-\-\-))\K.*(?=\*\/)/is"
+                            if (iscomp) {
+                                resget(hexData,file,"persistent","data")
+                                ;((hexData!=""&&hexData!="0000000000000000")?(add:=hextobin(bin,strget(&hexdata)),dataObjBack:=objload(add)):(dataObjBack:={}))
+                                try
+                                    dataObjBack:=base.json.load(strget(&hexdata))
+                                if !(dataobjback.count())
+                                    dataObjBack:={}
+                                this.__data:=dataObjBack
+                                return
+                            } data:=base.file.read(file), perData:=base.filter(data,flag)
+                            if (perData="")
+                                return this.__data:=this.default
+                            hexdata:=base.filter(perData,"/(?:`r`n\;\-\-\-)/is=")
+                            ;add:=hextobin(bin,strget(&hexdata)),_f:=objload(add)
+                            _f:=_.json.load(hexdata)
+                            return this.__data:=_f
+                        }
+
+                        data[] {
+                            get {
+                                return this.__data
+                            } set {
+                                if (isobject(value))
+                                    this.__data:=value
+                        }}
+                    }
+                    
+
                 ;/json
                     class JSON extends _ {
                         static version := "0.4.1-git-built"
-    
+
                         BoolsAsInts[]
                         {
                             get
@@ -3107,7 +3333,7 @@ intel() {
                                 this._init()
                                 return NumGet(this.lib.bBoolsAsInts, "Int")
                             }
-    
+
                             set
                             {
                                 this._init()
@@ -3115,7 +3341,7 @@ intel() {
                                 return value
                             }
                         }
-    
+
                         EscapeUnicode[]
                         {
                             get
@@ -3123,7 +3349,7 @@ intel() {
                                 this._init()
                                 return NumGet(this.lib.bEscapeUnicode, "Int")
                             }
-    
+
                             set
                             {
                                 this._init()
@@ -3131,25 +3357,25 @@ intel() {
                                 return value
                             }
                         }
-    
+
                         _init()
                         {
                             if (this.lib)
                                 return
                             this.lib := this._LoadLib()
-    
+
                             ; Populate globals
                             NumPut(&this.True, this.lib.objTrue, "UPtr")
                             NumPut(&this.False, this.lib.objFalse, "UPtr")
                             NumPut(&this.Null, this.lib.objNull, "UPtr")
-    
+
                             this.fnGetObj := Func("Object")
                             NumPut(&this.fnGetObj, this.lib.fnGetObj, "UPtr")
-    
+
                             this.fnCastString := Func("Format").Bind("{}")
                             NumPut(&this.fnCastString, this.lib.fnCastString, "UPtr")
                         }
-    
+
                         _LoadLib32Bit() {
                             static CodeBase64 := ""
                             . "FLYQAQAAAAEwVYnlEFOB7LQAkItFFACIhXT///+LRUAIixCh4BYASAAgOcIPhKQAcMdFAvQAFADrOIN9DAAAdCGLRfQF6AEAQA+2GItFDIsAAI1I"
@@ -3208,14 +3434,20 @@ intel() {
                             ; https://creativecommons.org/licenses/by/4.0/
                             if (!Code) {
                                 CompressedSize := VarSetCapacity(DecompressionBuffer, 3935, 0)
-                                if !DllCall("Crypt32\CryptStringToBinary", "Str", CodeBase64, "UInt", 0, "UInt", 1, "Ptr", &DecompressionBuffer, "UInt*", CompressedSize, "Ptr", 0, "Ptr", 0, "UInt")
+                                if !DllCall("Crypt32\CryptStringToBinary","Str",CodeBase64,"UInt",0,"UInt",1,"Ptr",&DecompressionBuffer,"UInt*",CompressedSize,"Ptr",0,"Ptr",0,"UInt")
                                     base.error("Failed to convert MCLib b64 to binary")
                                 if !(pCode := DllCall("GlobalAlloc", "UInt", 0, "Ptr", 9092, "Ptr"))
                                     base.error("Failed to reserve MCLib memory")
                                 DecompressedSize := 0
-                                if (DllCall("ntdll\RtlDecompressBuffer", "UShort", 0x102, "Ptr", pCode, "UInt", 9092, "Ptr", &DecompressionBuffer, "UInt", CompressedSize, "UInt*", DecompressedSize, "UInt"))
+                                if (DllCall("ntdll\RtlDecompressBuffer","UShort",0x102,"Ptr",pCode,"UInt",9092,"Ptr",&DecompressionBuffer,"UInt",CompressedSize,"UInt*",0,"UInt"))
                                     base.error("Error calling RtlDecompressBuffer",, Format("0x{:08x}", r))
-                                for k, Offset in [33, 66, 116, 385, 435, 552, 602, 691, 741, 948, 998, 1256, 1283, 1333, 1355, 1382, 1432, 1454, 1481, 1531, 1778, 1828, 1954, 2004, 2043, 2093, 2360, 2371, 3016, 3027, 5351, 5406, 5420, 5465, 5476, 5487, 5540, 5595, 5609, 5654, 5665, 5676, 5725, 5777, 5798, 5809, 5820, 7094, 7105, 7280, 7291, 8610, 8949] {
+                                tArr:=[33, 66, 116, 385, 435, 552, 602, 691, 741, 948, 998, 1256
+                                , 1283, 1333, 1355, 1382, 1432, 1454, 1481, 1531, 1778, 1828
+                                , 1954, 2004, 2043, 2093, 2360, 2371, 3016, 3027, 5351, 5406
+                                , 5420, 5465, 5476, 5487, 5540, 5595, 5609, 5654, 5665, 5676
+                                , 5725, 5777, 5798, 5809, 5820, 7094, 7105, 7280, 7291, 8610
+                                , 8949]
+                                for k, Offset in tArr {
                                     Old := NumGet(pCode + 0, Offset, "Ptr")
                                     NumPut(Old + pCode, pCode + 0, Offset, "Ptr")
                                 }
@@ -3223,7 +3455,8 @@ intel() {
                                 if !DllCall("VirtualProtect", "Ptr", pCode, "Ptr", 9092, "UInt", 0x40, "UInt*", OldProtect, "UInt")
                                     base.error("Failed to mark MCLib memory as executable")
                                 Exports := {}
-                                for ExportName, ExportOffset in {"bBoolsAsInts": 0, "bEscapeUnicode": 4, "dumps": 8, "fnCastString": 2184, "fnGetObj": 2188, "loads": 2192, "objFalse": 5852, "objNull": 5856, "objTrue": 5860} {
+                                tObj:={"bBoolsAsInts":0,"bEscapeUnicode":4,"dumps":8,"fnCastString":2184,"fnGetObj":2188,"loads":2192,"objFalse":5852,"objNull":5856,"objTrue":5860}
+                                for ExportName, ExportOffset in tObj {
                                     Exports[ExportName] := pCode + ExportOffset
                                 }
                                 Code := Exports
@@ -3292,18 +3525,19 @@ intel() {
                             ; https://creativecommons.org/licenses/by/4.0/
                             if (!Code) {
                                 CompressedSize := VarSetCapacity(DecompressionBuffer, 4249, 0)
-                                if !DllCall("Crypt32\CryptStringToBinary", "Str", CodeBase64, "UInt", 0, "UInt", 1, "Ptr", &DecompressionBuffer, "UInt*", CompressedSize, "Ptr", 0, "Ptr", 0, "UInt")
+                                if !DllCall("Crypt32\CryptStringToBinary","Str",CodeBase64,"UInt",0,"UInt",1,"Ptr",&DecompressionBuffer,"UInt*",CompressedSize,"Ptr",0,"Ptr",0,"UInt")
                                     base.error("Failed to convert MCLib b64 to binary")
                                 if !(pCode := DllCall("GlobalAlloc", "UInt", 0, "Ptr", 11168, "Ptr"))
                                     base.error("Failed to reserve MCLib memory")
                                 DecompressedSize := 0
-                                if (DllCall("ntdll\RtlDecompressBuffer", "UShort", 0x102, "Ptr", pCode, "UInt", 11168, "Ptr", &DecompressionBuffer, "UInt", CompressedSize, "UInt*", DecompressedSize, "UInt"))
+                                if (DllCall("ntdll\RtlDecompressBuffer","UShort",0x102,"Ptr",pCode,"UInt",11168,"Ptr",&DecompressionBuffer,"UInt",CompressedSize,"UInt*",0,"UInt"))
                                     base.error("Error calling RtlDecompressBuffer",, Format("0x{:08x}", r))
                                 OldProtect := 0
                                 if !DllCall("VirtualProtect", "Ptr", pCode, "Ptr", 11168, "UInt", 0x40, "UInt*", OldProtect, "UInt")
                                     base.error("Failed to mark MCLib memory as executable")
                                 Exports := {}
-                                for ExportName, ExportOffset in {"bBoolsAsInts": 0, "bEscapeUnicode": 16, "dumps": 32, "fnCastString": 2624, "fnGetObj": 2640, "loads": 2656, "objFalse": 7632, "objNull": 7648, "objTrue": 7664} {
+                                tObj:={"bBoolsAsInts":0,"bEscapeUnicode":16,"dumps":32,"fnCastString":2624,"fnGetObj":2640,"loads":2656,"objFalse":7632,"objNull":7648,"objTrue":7664}
+                                for ExportName, ExportOffset in tObj {
                                     Exports[ExportName] := pCode + ExportOffset
                                 }
                                 Code := Exports
@@ -3313,7 +3547,7 @@ intel() {
                         _LoadLib() {
                             return A_PtrSize = 4 ? this._LoadLib32Bit() : this._LoadLib64Bit()
                         }
-    
+
                         /**
                             * ```ahk
                             * _.json.Dump()
@@ -3335,7 +3569,7 @@ intel() {
                             , "Int", !!pretty, "Int", 0, "CDecl Ptr")
                             return StrGet(&buf, size, "UTF-16")
                         }
-    
+
                         /**
                             * ```ahk
                             * _json.Load()
@@ -3352,26 +3586,26 @@ intel() {
                                 json:=temp
                             }
                             t:=base.filter(json,"/(?:(?:\{|\[).*(?:\}|\])(?!\s*(?:\,|\}|\])))/is"), json:=((t)?(t):base.error("invalid input","-2"))
-    
+
                             _json := " " json ;\\Prefix with a space to provide room for BSTR prefixes
                             VarSetCapacity(pJson, A_PtrSize)
                             NumPut(&_json, &pJson, 0, "Ptr")
-    
+
                             VarSetCapacity(pResult, 24)
-    
+
                             if (r := DllCall(this.lib.loads, "Ptr", &pJson, "Ptr", &pResult , "CDecl Int")) || ErrorLevel
                             {
                                 base.error("Failed to parse JSON (" r "," ErrorLevel ")", -1
                                 , Format("Unexpected character at position {}: '{}'"
                                 , (NumGet(pJson)-&_json)//2, Chr(NumGet(NumGet(pJson), "short"))))
                             }
-    
+
                             result := ComObject(0x400C, &pResult)[]
                             if (IsObject(result))
                                 ObjRelease(&result)
                             return result
                         }
-    
+
                         /**
                             * ```ahk
                             * _.json.file()
@@ -3386,7 +3620,7 @@ intel() {
                                 base.error("file doesn't exist",-2)
                             return this.load(content)
                         }
-    
+
                         /**
                             * ```ahk
                             * _.json.open()
@@ -3399,7 +3633,7 @@ intel() {
                                 base.error("input has to be object","-2")
                             return base.file.edit(_obj)
                         }
-    
+
                         True[]
                         {
                             get
@@ -3408,7 +3642,7 @@ intel() {
                                 return _
                             }
                         }
-    
+
                         False[]
                         {
                             get
@@ -3417,7 +3651,7 @@ intel() {
                                 return _
                             }
                         }
-    
+
                         Null[]
                         {
                             get
@@ -3474,7 +3708,7 @@ intel() {
                     start(_obj) {
                         if (this.info)
                             return 0
-                        this["batchLines"]:="-1"
+                        this["batchLines"]:="-1", this["_clock"]:={}, this.per.pull()
                         #Persistent
                         #SingleInstance, Force
                         SetKeyDelay, -1, -1
@@ -3483,8 +3717,8 @@ intel() {
                         #MaxThreadsPerHotkey 1
                         SysGet, ms_, Monitor
                         setworkingdir, % a_scriptdir
-                        ((_.filter(_obj.packageName,"/^[A-z!@#$%^&*_+=\-.]+$/is"))?():(_.error("conform with the naming scheme; /^[A-z!@#$%^&*_+=\-.]+$/")))
-                        this["info"]:=_obj, this.reg.set("_name",a_scriptname), this.reg.set("_path",a_scriptdir), ((a_iscompiled)?(""):(this.reg.set("_ahk",A_AhkPath))), this["_clock"]:={}
+                        ((_.filter(_obj.packageName,"/^[A-z!@#$%^&*_+=\-.]+$/is"))?():(_.error("conform with the naming scheme; /^[A-z0-9!@#$%^&*_+=\-.]+$/")))
+                        this["info"]:=_obj,this.reg.set("_name",a_scriptname),this.reg.set("_path",a_scriptdir),((a_iscompiled)?"":(this.reg.set("_ahk",A_AhkPath)))
                         if !(DllCall("Wininet.dll\InternetGetConnectedState", "Str", "0x40","Int",0)) && (this.info.passwordProtected)
                             exitapp
                         if !((this.info.haskey("packageName"))&&(this.info.haskey("version"))&&(this.info.haskey("url"))&&(this.info.haskey("passwordProtected")))
@@ -3492,38 +3726,43 @@ intel() {
                         if (DllCall("Wininet.dll\InternetGetConnectedState", "Str", "0x40","Int",0)) {
                             this["server"]:=this.json.load(this.urlLoad(this.info.url)).comment("</^(\/\/).*\1?$/is")
                             ;{ password system
-                                if ((this.info.passwordProtected) && ((this.server.passwords)?(1):this.error("_.server.passwords needs to be set")) && ((this.server.passwords[1])?(1):this.error("_.server.passwords needs to be not empty"))) {
-                                    pass:=this.reg.get("pass"), ((pass)?(""):(pass:=clipboard))
+                                if ((this.info.passwordProtected) && ((this.server.passwords[1])?(1):this.error("_.server.passwords is empty"))) {
+                                    ((this.server.passwords)?(""):(this.error("_.server.passwords needs to be set")))
+                                    pass:=this.per.data.pass, ((pass)?(""):(pass:=clipboard))
                                     loop {
                                         if !(pass) {
                                             pass:=this.input()
-                                        } switch (this.server.verify(pass)) {
+                                        } switch (this.server.passwords.unhash(pass)) {
                                             case "0": {
                                                 traytip, % this.filter(a_scriptname,"/^((?:.*)(?=\..+?$))/is"), % "incorrect password"
                                                 pass:="", temp:=""
                                             }
                                             case "1": {
-                                                this.reg.set("pass",pass), this.server.report(this.filter(a_scriptname,"/^((?:.*)(?=\..+?$))/is") " / " A_UserName " @ " A_MMM A_DD A_DDD)
+                                                this.per.data.pass:=pass
+                                                this.server.report(this.filter(a_scriptname,"/^((?:.*)(?=\..+?$))/is")" / " A_UserName " @ " A_MMM A_DD A_DDD)
                                                 break
                                             }
                                         }
                                     }
                                 }
                             ;} /
-                            this.update(this.info.version)
                             this.reg.set("server",this.server)
-                        } if (this.info.passwordProtected) && (!(this.server.verify(pass))) {
-                            traytip, % "", % "this script is password protected"
-                            exitapp
-                        }
-                        if (this.__html5.fix()!=1)
+                        } else {
+                            if (this.info.passwordProtected) {
+                                traytip, % "", % "this script is password protected"
+                                exitapp
+                        }} if (this.__html5.fix()!=1)
                             reload
                         onmessage(0x4a,objbindmethod(this.carp,"recieve")), this.carp.onInit:=1, DllCall("AttachConsole","UInt",-1)
                         for a,b in a_args
                             args:=args . b . " "
+                        if (args="")
+                            args:=this.per.data.flags
                         ((args!="")?(this.carp.__parse(args,"1")):())
+                        this.update(this.info.version)
                         traytip, % this.filter(a_scriptname,"/^((?:.*)(?=\..+?$))/is"), % "version: " this.info.version , 0.1, 16
-                        OnMessage(0x404, objbindmethod(this.__tray,"__hover")), this.carp.onInit:=0
+                        OnMessage(0x404, objbindmethod(this.__tray,"__hover")), this.carp.onInit:=0, onexit(objbindmethod(this.per,"dump",a_scriptname,a_iscompiled,1))
+                        OnMessage(0x111,objbindmethod(this.__tray,"__reload"))
                         return this.info.count()
                     }
                 
@@ -3562,8 +3801,8 @@ intel() {
                                     if (exist) {
                                         sendmessage, 0x4a, 0, &reqMem,, % name . " ahk_class AutoHotkey"
                                     } else {
-                                        path:=_.reg.get("\" . (id) . "@@_path")
-                                        run, % """" . ((_.reg.get("\" . (id) . "@@_ahk")) . """ """ . (path . "\" . name)) . """ " . """" . req . """", % """" . path """"
+                                        path:=_.reg.get("\" . (id) . "@@_path"),ahk_:=(_.reg.get("\" . (id) . "@@_ahk"))
+                                        run, % """" . ahk_ . """ """ . (path . "\" . name) . """ " . """" . base.filter(req,"/[""]/is=$0$0") . """", % """" . path """"
                                     }
                                 } case "exe": {
                                     exist:=winexist("ahk_exe " . name)
@@ -3571,7 +3810,7 @@ intel() {
                                         sendmessage, 0x4a, 0, &reqMem,, % "ahk_exe " . name
                                     } else {
                                         path:=_.reg.get("\" . (id) . "@@_path")
-                                        run, % """" . (path . "\" . name) . """ " . """" . req . """", % """" . path """"
+                                        run, % """" . (path . "\" . name) . """ " . """" . base.filter(req,"/[""]/is=$0$0") . """", % """" . path """"
                                     }
                             }}
                             DetectHiddenWindows, Off
@@ -3603,7 +3842,7 @@ intel() {
                             ;/format request
                                 ;/parse into object
                                     temp:=request, reqObj:=[]
-                                    requestId:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+(?=\:)/is"), temp:=_.filter(temp,"/^[A-z!@#$%^&*_+=\-.]+\:/is=")
+                                    requestId:=_.filter(temp,"/^[A-z0-9!@#$%^&*_+=\-.]+(?=\:)/is"), temp:=_.filter(temp,"/^[A-z0-9!@#$%^&*_+=\-.]+\:/is=")
                                     ;_.print("//",temp,"//")
                                     loop {
                                         cso:=_.filter(temp,"/\-\-(?:[A-z\/])+(?:\s+)?(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?/isO")
@@ -3630,10 +3869,12 @@ intel() {
             
                                         ;/find correct function for flag
                                             tempHandler:={}, tempHandler.bump(this.flags)
-                                            fullFlagPath:=_.filter(cs,"/\-\-\K(?:[A-z\/])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"), fullFlagPathEnd:=fullFlagPath
+                                            reg:="/\-\-\K(?:[A-z\/])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"
+                                            fullFlagPath:=base.filter(cs,reg)
+                                            fullFlagPathEnd:=fullFlagPath
                                             loop {
-                                                cf:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+(?=(?:\/)?)/is")
-                                                fullFlagPath:=_.filter(fullFlagPath,"/^[A-z!@#$%^&*_+=\-.]+\/?/is=")
+                                                cf:=base.filter(fullFlagPath,"/^[A-z0-9!@#$%^&*_+=\-.]+(?=(?:\/)?)/is")
+                                                fullFlagPath:=base.filter(fullFlagPath,"/^[A-z0-9!@#$%^&*_+=\-.]+\/?/is=")
                                                 if (cf="")
                                                     break
                                                 ;_.print(cf)
@@ -3675,7 +3916,7 @@ intel() {
                             
                             reload(args) {
                                 if (base.carp.oninit=0)
-                                    reload
+                                    base.reload()
                                 return
                             }
                             
@@ -3709,10 +3950,11 @@ intel() {
                                 reqObj:=[], chain:={}, target:=args[1], args.removeat(1)
                                 for a,b in args
                                     ((base.filter(b,"/^(?:\[|\{).*(?:\]|\})$/is"))?(args[a]:=base.json.load(b)):())
-                                fullFlagPath:=_.filter(target,"/^(\s+)?\K(?:[A-z.])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is"), fullFlagPathEnd:=fullFlagPath
+                                fullFlagPath:=base.filter(target,"/^(\s+)?\K(?:[A-z.])+(?:\s+)?(?=(?:\??\=(?:(?:\s+)?(?<!\\)([""'``])(?:\\.|[^\\])*?(?<!\\)\1(?:\s+)?\,?(?:\s+)?)+)?)/is")
+                                fullFlagPathEnd:=fullFlagPath
                                 loop {
-                                    cf:=_.filter(fullFlagPath,"/^[A-z0-9_]+(?=(?:\.)?)/is")
-                                    fullFlagPath:=_.filter(fullFlagPath,"/^[A-z0-9_]+\.?/is=")
+                                    cf:=base.filter(fullFlagPath,"/^[A-z0-9_]+(?=(?:\.)?)/is")
+                                    fullFlagPath:=base.filter(fullFlagPath,"/^[A-z0-9_]+\.?/is=")
                                     if (cf="")
                                         break
                                     current:=((chain.count()>0)?(chain[cf]):((cf)))
@@ -3731,8 +3973,22 @@ intel() {
                                 return re
                             }
 
-                            compile(args) {
-                                return base.__compile.compileById(base.info.packageName)
+                            compile(args,isCMD) {
+                                base.__compile.compileById(base.info.packageName,args[1])
+                                if (isCMD)
+                                    exitapp
+                                return
+                            }
+
+                            params(args) {
+                                oldParams:=base.reg.get("params"),base.reg.kill("params"),base.__params.__open(oldParams,1)
+                                reload
+                                return
+                            }
+
+                            update(args) {
+                                base.update(0)
+                                return
                             }
                         }
         
@@ -3744,11 +4000,11 @@ intel() {
                     }
     
                     class __params extends _ {
-                        __open(_obj,redo:="0") {
+                        __open(_obj,redo:="0",onstart:="1") {
                             static
                             static search, home, pic, favid, homeid, 参数2hwnd, 参数2subhwnd
                             local id, html, ccsstyle, htmlfile, htmlend, i, savedParams, temp, amm, c, perList, final, goof, remadeList, temp, replaceList, a , b
-                            id:="参数2", savedParams:=_.reg.get("params")
+                            id:="参数2", savedParams:=base.per.data.params
                             if (redo=0) {
                                 this.lastObj:=_obj
                                 for a,b in _obj
@@ -3866,6 +4122,14 @@ intel() {
                                             color: #777;
                                             background: #11111b;
                                         }
+                                        .background-image {
+                                            width: 80px;
+                                            height: 80px;
+                                            display: flex;
+                                            position:relative;
+                                            left: 367px;
+                                            bottom: 50px;
+                                        }
                                     </style>
                                     <html>
                                         <body style='margin: 0; background-color:#11111b; overflow: hidden;'>
@@ -3878,13 +4142,14 @@ intel() {
                                                 </button>
                                                 <div class="goof">
                                                 </div>
-                                                <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png' style='width: 80px; height: 80px; display: flex; position:relative; left: 367px; bottom: 50px;'>
+                                                <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png'>
                                             </div>
                                         </body>
-                                        <script src="https://kit.fontawesome.com/c4254e24a8.js" crossorgin="anonymous"></script>
+                                        <script src="https://kit.fontawesome.com/1c93f068cd.js" crossorigin="anonymous"></script>
                                     </html>
                                 )
-                                gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w460 h200 +0x4000000 -HScroll vhome", about:<!DOCTYPE html><meta http-equiv="X-UA-Compatible" content="IE=edge">
+                                htmlfFix:="about:<!DOCTYPE html><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">"
+                                gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w460 h200 +0x4000000 -HScroll vhome", % htmlfFix
                                 home.document.write(html)
                                 this["home"]:=home
                                 favId:=home.document.getElementById("favoriteButton")
@@ -3892,7 +4157,9 @@ intel() {
                                 homeId:=home.document.getElementById("homeButton")
                                 ComObjConnect(homeID, {"onclick":objbindmethod(this,"__confirm")})
                                 gui, % id . ":Add", % "ActiveX", % "x1 y22 w470 h535 disabled +0x4000000 vpic", htmlfile
-                                pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>")
+                                backgroundImage1:="<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image'"
+                                backgroundImage2:="src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>"
+                                pic.Write(backgroundImage1 . backgroundImage2)
                             } if !(winexist("ahk_id " . 参数2hwnd)) {
                                 gui, % id . ":show", % "center y55 w472", % "gooba"
                             }
@@ -4029,7 +4296,8 @@ intel() {
                                 }
                             </style>
                             )
-                            html:="<!Doctype html>" . ccsStyle . "<html><body style='margin: 0; overflow: hidden; width: 460px; height: 460px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 460px;'>"
+                            html:="<!Doctype html>" . ccsStyle . "<html><body style='margin: 0; overflow: hidden;"
+                            html:=html . "width: 460px; height: 460px;'><div class=""scrolling-box"" style='margin: 0; width: 460px; height: 460px;'>"
                             htmlEnd:="</div></body><script src=""https://kit.fontawesome.com/c4254e24a8.js"" crossorgin=""anonymous""></script></html>"
                             id:="参数2sub"
                             gui, % id . ":destroy"
@@ -4042,34 +4310,42 @@ intel() {
                                 amm:=strlen(base.filter(a,"/^.*(?=(?<!_)(?:_).*)/is")), perList.push(amm), ((amm>c)?(c:=amm):())
                             for a,b in ((i:=0,final:=[],replaceList:={})?():(_obj))
                                 i++, temp:=base.char("-",(c-perList[i])), final[temp . a]:=b, replaceList[temp . a]:=a
-                            html2Add:="", i:=0, this.ids:=[]
+                            html2Add:="", i:=0, this.ids:=[],this.formIds:=[]
                             ;/build search html
                                 for a,b in final {
                                     i++
                                     html2Add:= html2Add . ""
                                     . "<div class='box' style='font-size: 15px; position: relative;'>" . ("") . ""
                                     . "     <br><div class='text-field' style='font-size: 15px; left: 15px;'>" . this.filter(a,"/^(?:.*(?<!_)(_))?\K(?:.*)$/is") . "</div>"
-                                    . "     <form class='editField' style='left: 294px; '>"
+                                    . "     <form class='editField' id='editFieldId" . i . "' style='left: 294px; '>"
                                     . "        <input id='edit" . i . "' class='editInput' type='text' value='" . b . "' placeholder='...'/>"
                                     . "     </form>"
                                     . "</div>"
-                                    this.ids.push("edit" . i)
+                                    this.ids.push("edit" . i), this.formIds.push("editFieldId" . i)
                                 } i:=0
-                                gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w460 h460 -0x4000000 -HScroll vsearch", about:<!DOCTYPE html><meta http-equiv="X-UA-Compatible" content="IE=edge">
+                                htmlfFix:="about:<!DOCTYPE html><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">"
+                                gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w460 h460 -0x4000000 -HScroll vsearch", % htmlfFix
                                 search.document.write(html . (html2Add) . htmlEnd)
                                 this["search"]:=search
                                 gui, % id . ":show", % "x" . (6) . " y" . (77) . " w460 h460"
+                                i:=0
+                                for a,b in this.formIds {
+                                    i++
+                                    (%b%):=search.document.getElementById(b)
+                                    ComObjConnect((%b%),{"onkeypress":objbindmethod(this,"__keyHandler",this.ids[i])})
+                                }
                             while (winexist("ahk_id " . 参数2hwnd)) {
                             }
-                            for a,b in ((goof:={},i:=0)?(final):()) {
+                            for a,b in ((goof:={},formIds:={},i:=0)?(final):()) {
                                 i++
                                 goof[a]:=search.document.getElementById(this.ids[i]).Value
                             } for a,b in ((remadeList:={},i:=0)?(goof):()) {
                                 i++, remadeList[replaceList[a]]:=b
-                            } base.reg.set("params",remadeList)
-                            if (redo) {
-                                reload
-                                exitapp
+                            }
+                            base.per.data.params:=remadeList
+                            if ((redo)&&(onstart=0)) {
+                                base.__tray.__reload(65303,1,0x111,0,"bypass")
+                                return
                             }
                             PostMessage, 0x0112, 0xF020,,, % "ahk_id " . this.hwnd
                             return remadeList
@@ -4079,12 +4355,18 @@ intel() {
                             gui, % "参数2:hide"
                             return
                         }
+
+                        __keyHandler(id) {
+                            if ((getkeystate("Ctrl","P"))&&(getkeystate("v","P")))
+                                this.search.document.getElementById(id).value:=this.search.document.getElementById(id).value . clipboard
+                            return
+                        }
                     }
                 
                 ;/compiler
                     class __compile extends _ {
                         static private
-                        compileById(id) {
+                        compileById(id,_transferPer:="") {
                             _path:=base.reg.get("\" . id . "@@_path"), _name:=base.reg.get("\" . id . "@@_name"), compiler:=base.reg.get("\@@compiler")
                             ;/get compiler location if not stored
                                 loop {
@@ -4096,16 +4378,22 @@ intel() {
                                         continue
                                     base.reg.set("\@@compiler",tempCompilerLoc), compiler:=tempCompilerLoc
                                 }
-                            ;/work on de compiling
+                            ;/work on compiling
                                 if (base.filter(_name,"/^.*\.\K(?:ahk|exe)$/is")!="ahk")
                                     return 0
                                 ;packageName:=base.filter(base.file.read(_path . "\" . _name),"/""?packagename""?(?:\s+)?\K(?:\s+)?\:(?:\s+)?""\K(?:""""|[^""])+(?="")/is")
                                 _fileName:=base.filter(_name,"/^.*(?=\..+$)/is")
-                                tempIcon:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon"), icon:=((tempIcon!="")?(tempIcon):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@LastIcon")))
-                                tempBin:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastBinFile"), bin:=((tempBin!="")?(tempBin):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@lastBinFile")))
+                                tempIcon:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon")
+                                icon:=((tempIcon!="")?(tempIcon):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@LastIcon")))
+                                tempBin:=base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastBinFile")
+                                bin:=((tempBin!="")?(tempBin):(base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe@@lastBinFile")))
                                 compilerSource:=base.filter(compiler,"/^.*(?=\..+$)/is") . ".ahk"
-                                request:="""" . (compiler) . """ """ . (compilerSource) . """ /in """ . (_path . "\" . _name) . """ /out """ . (_path . "\" . _fileName . ".exe") . """ /icon """ . (base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon")) . """ /bin """ . (bin) . """ /compress 2 /pass AutoHotkey"
-                                run, % request
+                                request:="""" . (compiler) . """ """ . (compilerSource) . """ /in """ . (_path . "\" . _name) . """ /out """ . (_path . "\" . _fileName . ".exe")
+                                . """ /icon """ . (base.reg.get("HKEY_CURRENT_USER\SOFTWARE\AutoHotkey\Ahk2Exe_H@@LastIcon")) . """ /bin """ . (bin)
+                                . """ /compress 2 /pass AutoHotkey"
+                                runwait, % request
+                                if !(_transferPer)
+                                    base.per.dump((_path . "\" . _fileName . ".exe"),1,1)
                             return
                         }
                     }
@@ -4180,7 +4468,9 @@ intel() {
                         */
                     edit(_file) {
                         if (isobject(_file)) {
-                            dumped:=base.json.dump(_file,1), name:=a_temp . "\" . base.t2h(base.filter(dumped,"/^.{1,13}/is")) . ".json", this.write(name,dumped), _file:=name, convert:=1
+                            dumped:=base.json.dump(_file,1)
+                            name:=a_temp . "\" . base.t2h(base.filter(dumped,"/^.{1,13}/is")) . ".json", this.write(name,dumped)
+                            _file:=name, convert:=1
                         } if !(fileexist(_file))
                             this.write(_file,"")
                         loop {
@@ -4207,6 +4497,13 @@ intel() {
                         if (convert)
                             filedelete, % _file
                         return ((convert)?(loaded):(content))
+                    }
+
+                    listDir(_directory:="") {
+                        final:=[], _directory:=((_directory!="")?(_directory):(a_scriptdir))
+                        Loop % _directory . "\*.*"
+                            final.push(A_LoopFileName)
+                        return final
                     }
                 }
             
@@ -4364,7 +4661,10 @@ intel() {
                             EnvGet,drive,SystemDrive
                             if (fileExist(drive "\users\" a_username "\OnTopReplica.exe"))
                                 return 1
-                            base.cmd("wait\hide@cd """ drive "\users\" a_username """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download/`%2B/_ontop.zip -OutFile ""_ontop.zip"""")&&(@powershell -command ""Expand-Archive -Force '_ontop.zip' '" drive "\users\" a_username "'"" & del ""_ontop.zip"")&pause")
+                            command:="wait\hide@cd """ drive "\users\" a_username """&&(powershell ""Invoke-WebRequest https://github.com/idgafmood/mhk_template/releases/download"
+                            command:=command . "/`%2B/_ontop.zip -OutFile ""_ontop.zip"""")&&(@powershell -command ""Expand-Archive -Force '_ontop.zip' '" drive "\users\" a_username
+                            command:=command . "'"" & del ""_ontop.zip"")&pause"
+                            base.cmd(command)
                             return 2
                         }
     
@@ -4396,7 +4696,7 @@ intel() {
                             for a,b in temp
                                 final:=final b
                             return this.__process(final)
-                        } ;_.ontop.instance({"windowId":winexist("ahk_exe code.exe"),"chromeOff":"nil","clickThrough":"nil","position":"100,100","size":"500,500","region":"0,0,600,600"})
+                        } ;---{"windowId":winexist("ahk_exe code.exe"),"chromeOff":"nil","clickThrough":"nil","position":"100,100","size":"500,500","region":"0,0,600,600"}
                     }
                 
                 ;/input
@@ -4525,6 +4825,14 @@ intel() {
                                         top: 4px;
                                         height: 50px;
                                     }
+                                    .background-image {
+                                        width: 80px;
+                                        height: 80px;
+                                        display: flex;
+                                        position:relative;
+                                        left: 367px;
+                                        bottom: 50px;
+                                    }
                                 </style>
                                 <html>
                                     <body style='margin: 0; background-color:#11111b; overflow: hidden;'>
@@ -4535,14 +4843,14 @@ intel() {
                                             <form class='editField' style=''' id='form1'>
                                                 <input id='edit1' class='editInput' type='password' placeholder='%_value%'/>
                                             </form>
-                                            <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png' style='width: 80px; height: 80px; display: flex; position:relative; left: 367px; bottom: 50px;'>
+                                            <img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/marisa-256x256.png'>
                                         </div>
                                     </body>
-                                    <script src="https://kit.fontawesome.com/c4254e24a8.js" crossorgin="anonymous"></script>
+                                    <script src="https://kit.fontawesome.com/1c93f068cd.js" crossorigin="anonymous"></script>
                                 </html>
                             )
-                            
-                            gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w290 h155 +0x4000000 -HScroll vhome", about:<!DOCTYPE html><meta http-equiv="X-UA-Compatible" content="IE=edge">
+                            htmlfFix:="about:<!DOCTYPE html><meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">"
+                            gui, % id . ":Add", % "ActiveX", % "xP+0 yP+1 w290 h155 +0x4000000 -HScroll vhome", % htmlfFix
                             home.document.write(html)
                             this["home"]:=home
                             favId:=home.document.getElementById("favoriteButton")
@@ -4550,7 +4858,9 @@ intel() {
                             formId:=home.document.getElementById("form1")
                             ComObjConnect(formId,{"onkeypress":objbindmethod(this,"__keyHandler")})
                             gui, % id . ":Add", % "ActiveX", % "x1 y22 w300 h172 disabled +0x4000000 vpic", htmlfile
-                            pic.Write("<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image' src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>")
+                            backimage:="<body style='margin: 0; overflow: hidden;'><div class='image'><img class='background-image'"
+                            backimage:=backimage . "src='https://github.com/idgafmood/mhk_koi/releases/download/`%2B/borderBack.png' style='width: 100%; height:100%;'></div></body>"
+                            pic.Write(backimage)
                             gui, % id . ":show", % "center y55 w302", % "gooba"
                             while (winexist("ahk_id " . 进入hwnd)) {
                             }
@@ -4572,11 +4882,9 @@ intel() {
                 
                 ;/stdout
                     stdout(args*) {
-                        if ((args.count>1) . ((final:=[])?():()))
-                            for a,b in args
-                                final[a]:=b . "`r`n"
-                        else
-                            final:=args
+                        final:=[]
+                        for a,b in args
+                            final[a]:=b . "`r`n"
                         for a,b in final
                             fileappend, % ((isobject(b))?(_.json.dump(b,1)):(b)), % "*"
                         return
@@ -4593,69 +4901,41 @@ intel() {
                     */
                 cmd(_command) {
                     aCmd:=this.filter(_command,"/(((wait)?(\\)?(hide)?)(\@)?)\K(.*)/is"), aHide:=((this.filter(_command,"/((.+?)?(\\)?(hide)(\@))\K(.*)/is"))?("hide"):(""))
+                    pname:=this.info.packageName
+                    fill:="&((reg delete hkcu\software\.mood\" pname " /v ""return"" /f)&(reg add hkcu\software\.mood\" pname " /v ""return"" /d ""%errorLevel%""))"
                     switch ((this.filter(_command,"/((wait)(\\)?(.+?)?(\@))\K(.*)/is"))?("1"):("0")) {
                         case "1":
-                            runwait, % comspec " /c " aCmd "&((reg delete hkcu\software\.mood\" this.info.packageName " /v ""return"" /f)&(reg add hkcu\software\.mood\" this.info.packageName " /v ""return"" /d ""%errorLevel%""))", % a_scriptDir, % aHide
+                            runwait, % comspec " /c " aCmd, % a_scriptDir, % aHide
                         case "0":
-                            run, % comspec " /c " aCmd "&((reg delete hkcu\software\.mood\" this.info.packageName " /v ""return"" /f)&(reg add hkcu\software\.mood\" this.info.packageName " /v ""return"" /d ""%errorLevel%""))", % a_scriptDir, % aHide
+                            run, % comspec " /c " aCmd fill, % a_scriptDir, % aHide
                     }
                     return (this.reg.get("return"))
                 }
     
-                ;/powershell system
+                ;/bps
                     class ps extends _ {
-                        /**
-                            * ```ahk
-                            * _.ps.__wrap()
-                            * ```
-                            * @ fix params on imported scripts
-                            * - **_method** `boundMethodObject`
-                            * - **_params*** `*`
-                            */
-                        __wrap(_method,_params*) {
-                            dt:=base.json.dump(this)
-                            while (a_index <= _params.maxindex()) ((isobject(_params[a_index]))?(((current:=base.json.dump(_params[a_index]))?(""):(""))):(((current:=_params[a_index])?(""):(""))))
-                                if (current = dt)
-                                    ((a)?(_params.removeat(a_index)):(a:=1))
-                            return this[_method].call(_params*)
+                        __runPs1(ps1) {
+                            if (!this.dllLib)
+                                this["dllLib"]:=DllCall("LoadLibrary","Str","kernel32.dll","Ptr") ;A_WinDir . "\System32\WindowsPowerShell\v1.0\powershell.exe"
+                            ps:="powershell.exe -Executionpolicy bypass -nologo -NoProfile -command ""&{" . (ps1) . "}"""
+                            dir:=a_scriptdir,VarSetCapacity(pri, 24, 0),VarSetCapacity(prs, 96, 0) ;----$0x08000000
+                            dllcall("CreateProcessW","uint",0,"ptr",&ps,"uint",0,"uint",0,"int",1,"uint",0x08000000,"uint",0,"ptr",&dir,"ptr",&prs,"ptr",&pri)
+                            return
                         }
-    
-                        /**
-                            * ```ahk
-                            * _.ps.import()
-                            * ```
-                            * @ import powershell scripts as if they were normal methods
-                            * - **_link** `string`
-                            */
-                        import(_link) {
-                            name:=base.filter(_link,"/((.*)\/)\K(.*)/is","/^(.+?)(?=(\.))/is"), this[name]:=this.__wrap.bind(this,"execute",this,_link)
-                            return (name)
+
+                        import(ps1,name:="") {
+                            try
+                                tempps1src:=base.urlLoad(ps1)
+                            if (tempps1src.count()>0)
+                                tname:=base.filter(ps1,"/^.*\/\K.*(?=\..+?$)/is"),ps1src:=tempps1src
+                            else
+                                ps1src:=strsplit(ps1,"`r`n")
+                            for a,b in ps1src
+                                data.=base.filter(base.filter(b,"/[""]/is=\`$0$0") . ";","/\n\K(?:\s+)?/is=")
+                            yuh:=((name!="")?(name):(((tname!="")?(tname):(base.md5(data)))))
+                            this[yuh]:=objbindmethod(this,"__runPs1",data)
+                            return
                         }
-    
-                        /**
-                            * ```ahk
-                            * _.ps.execute()
-                            * ```
-                            * @ execute powershell from raw url as if it was a normal method
-                            * - **_link** `string`
-                            * - **args*** `*`
-                            */
-                        execute(_link,args*) {
-                            base.reg.set("args",args), bLink:=base.filter(_link,"/(((wait)?(\\)?(hide)?)(\@)?)\K(.*)/is"), bHide:=((base.filter(_link,"/((.+?)?(\\)?(hide)(\@))\K(.*)/is"))?("hide"):(""))
-                            switch ((base.filter(_link,"/((wait)(\\)?(.+?)?(\@))\K(.*)/is"))?("1"):("0")) {
-                                case "1": runwait, % "powershell.exe -nologo -NoProfile -command ""&{$global:arg=((Get-ItemProperty -Path 'hkcu:\software\.mood\" base.info.packageName "').args|ConvertFrom-Json)};$global:packageName='" base.info.packageName "';$global:progressPreference = 'silentlyContinue';Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;(iwr '" bLink "' -UseBasicParsing).content | iex;&{New-ItemProperty -Path 'hkcu:\software\.mood\" base.info.packageName "' -Name 'return' -Value $return -Force}>$null 2>&1""", % a_scriptDir, % bHide
-                                case "0": run, % "powershell.exe -nologo -NoProfile -command ""&{$global:arg=((Get-ItemProperty -Path 'hkcu:\software\.mood\" base.info.packageName "').args|ConvertFrom-Json)};$global:packageName='" base.info.packageName "';$global:progressPreference = 'silentlyContinue';Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;(iwr '" bLink "' -UseBasicParsing).content | iex;&{New-ItemProperty -Path 'hkcu:\software\.mood\" base.info.packageName "' -Name 'return' -Value $return -Force}>$null 2>&1""", % a_scriptDir, % bHide
-                            }
-                            return (base.reg.get("return"))
-                        }
-    
-                        /*;*powershell info
-                            ignores profile to increase speed (oh-my-posh lol)
-                            '$arg' is an array containing params
-                            write to '$global:return' to pass the return
-                            convert objects to json to return objects
-                            link needs a filename for import to work
-                        */
                     }
                 
             
@@ -4671,11 +4951,64 @@ intel() {
                     update(_version:="") {
                         if (_version>=this.server.version)
                             return
-                        type:=((a_iscompiled)?("exe"):("ahk")), name:=this.filter(a_scriptname,"/^.*(?=\..*$)/is"), url:=((type="exe")?(this.server.compiled):(this.server.source))
-                        this.cmd("hide@(cd """ a_scriptdir """ && powershell ""Invoke-WebRequest " url " -OutFile \`""" name ".zip\`"""")&(del /F /Q """ . (a_scriptdir . "\" . a_scriptname) . """)&(@powershell -command ""Expand-Archive -Force \`""" . (name) . ".zip\`"" -DestinationPath \`""" . (a_scriptdir) . "\`"" "")&(timeout 1)&(del /F /Q """ . (name) . ".zip"")&(move """ . (this.info.packageName) . "." . (type) . """ """ . (a_scriptname) . """)&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)")
+                        tempId:=Format("{:L}",this.filter(comobjcreate("scriptlet.typelib").guid,"/^\{\K.+?(?=\})/is"))
+                        type:=((a_iscompiled)?("exe"):("ahk")), name:=this.filter(a_scriptname,"/^.*(?=\..*$)/is")
+                        url:=((type="exe")?(this.server.compiled):(this.server.source))
+                        command:="(cd """ a_scriptdir """ && powershell ""Invoke-WebRequest " url " -OutFile \`""" tempId ".zip\`"""")"
+                         . "&(@powershell -command ""Expand-Archive -Force \`""" . (tempId) . ".zip\`"" -DestinationPath \`""" . (a_scriptdir . "\" . tempId) . "\`"" "")"
+                         . "&(timeout 1)&(del /F /Q """ . (tempID) . ".zip"")"
+                        runwait, % comspec . " /c " . command, % a_scriptDir, % "hide"
+                        fileInside:=this.file.listdir(a_scriptdir . "\" . tempId)[1]
+                        file:=(a_scriptdir . "\" . tempId . "\" . fileInside)
+                        FileGetTime, startTime, % file
+                        this.per.dump(file,a_iscompiled,1),this.per.override:=1
+                        loop {
+                            FileGetTime, lastTime, % file
+                        } until (startTime!=lastTime)
+                        endCommand:="cd """ a_scriptdir """&&(del /F /Q """ . (a_scriptdir . "\" . a_scriptname) . """)&(move """
+                         . (a_scriptdir . "\" . tempId . "\" . fileInside) . """ """ . (a_scriptname) . """)"
+                         . "&(start """" """ . (a_scriptdir . "\" . a_scriptname) . """)&(del /F /Q """ . (a_scriptdir . "\" . tempId . "\" . fileInside) . """)"
+                         . "&(rd /S /Q """ (a_scriptdir . "\" . tempId) """)"
+                        run, % comspec . " /c " . endCommand, % a_scriptDir, % "hide"
                         exitapp
                         return 0
                     }
+                
+                ;/winhttp
+                    class __MSXML2 {
+                        static type:="Msxml2.ServerXMLHTTP"
+                        ;MSXML2.XMLHTTP.6.0 Msxml2.ServerXMLHTTP "WinHttp.WinHttpRequest.5.1"
+                        data[] {
+                            get {
+                                if !(this.id)
+                                    return 0
+                                final:=[], @:=this.anchor
+                                for a,b in this["请求数据"] {
+                                    loop {
+                                    } until (b.readystate=4)
+                                    final.push(b.responseText)
+                                } this["dataCollectionTime"]:=@.time,this["dataTotalCollectionTime"]:=this["锚点对象"].time
+                                return final
+                            } set {
+                                return
+                            }
+                        }
+                        
+                    }
+
+                    winhttp(args*) {
+                        reqObj:={}, reqObj.id:=this.uuid, reqObj["请求数据"]:={}, i:=0, type:=this.__msxml2.type, reqObj.requestAmount:=args.count()
+                        for a,b in this.__msxml2 {
+                            if (a!="__Class")
+                                reqobj[a]:=b
+                        } reqObj["锚点对象"]:=this.anchor
+                        for a,b in args {
+                            i++,reqObj["请求数据"][i]:=ComObjCreate(type)
+                            reqObj["请求数据"][i].open("GET",b,true),reqObj["请求数据"][i].send()
+                        } reqObj.processTime:=reqObj["锚点对象"].time, reqObj.requestAvgTime:=(reqObj.processTime/reqObj.requestAmount)
+                        return reqObj
+                    }
+                    
                 
                 ;/loading
                     /**
@@ -4691,9 +5024,11 @@ intel() {
                             if ((a_loopfilename = (regexreplace(_name,"i)\..*$"))) || a_loopfilename = (_name))
                                 return 0
                         this.cmd("wait\hide@(cd " a_scriptdir " && powershell ""Invoke-WebRequest " _link " -OutFile """ _name """"")")
-                        if ((regexmatch(_name,"i).*\.(zip|7z|rar)$")))
-                            this.cmd("wait\hide@cd " a_scriptdir " && (@powershell -command ""Expand-Archive -Force '" _name "' '" a_scriptdir "'"" & del """ _name """ & @echo .> """ (regexreplace(_name,"i)\..*$")) """)")
-                        return 1
+                        if ((regexmatch(_name,"i).*\.(zip|7z|rar)$"))) {
+                            command:="wait\hide@cd " a_scriptdir " && (@powershell -command ""Expand-Archive -Force '" _name "' '" a_scriptdir "'"" & del """
+                             . _name """ & @echo .> """ (regexreplace(_name,"i)\..*$")) """)"
+                            this.cmd(command)
+                        } return 1
                     }
     
                     /**
@@ -4706,10 +5041,10 @@ intel() {
                     urlLoad(_link*) {
                         结果:=[], i:=1
                         while (a_index <= _link.maxindex()) {
-                            try
-                                co:=ComObjCreate("Msxml2.ServerXMLHTTP"), co.open("GET",_link[a_index]), co.send(), ((this.filter(co.responseText,"/^(404(\:)?)/is"))?(this.error("404: Not Found`; " _link[a_index])):("")), response:=co.responseText
-                            catch e
-                                response:=this.ps.execute("wait\hide@https://raw.githubusercontent.com/idgafmood/mhk_template/main/ps/wr.ps1",_link[a_index])
+                            try {
+                                co:=ComObjCreate("Msxml2.ServerXMLHTTP"), co.open("GET",_link[a_index]), co.send()
+                                ((this.filter(co.responseText,"/^(404(\:)?)/is"))?(this.error("404: Not Found`; " _link[a_index])):("")), response:=co.responseText
+                            }
                             if (!(response) && !(结果.count()))
                                 this.error("content empty`r`nempty download`r`n`r`nTLS1.2 is not enabled or link returned nothing",-2)
                             localized:=this.filter(response,"/(?<!\`r)(?:\`n)/is=`r$0"), goobed:=(strsplit(localized, "`r`n"))
@@ -4857,6 +5192,26 @@ intel() {
                         64String:=this.64encode(_string), encString:=this.et2h(64String,_key), 64Key:=this.64encode(_key)
                         return ("""" . encString . "`\`\" . this.filter(64Key,"/(`\r)(`\n)/is=``r``n") . """")
                     }
+                    
+                    hash(_string) {
+                        salt:=Format("{:L}",this.filter(comobjcreate("scriptlet.typelib").guid,"/^\{\K.+?(?=\})/is")) ;$ 36 length
+                        varsetcapacity(m5,104,0),dllcall("advapi32\MD5Init","Ptr",&m5), pes:=salt . this.64encode(_string), i:=1
+                        dllcall("advapi32\MD5Update","Ptr",&m5,"AStr",pes,"UInt",strlen(pes)),dllcall("advapi32\MD5Final","Ptr",&m5)
+                        loop % 16
+                            encData.=Format("{:02x}",NumGet(m5,(87+(i++)),"UChar"))
+                        key:=salt . encData
+                        ;_.print("key: " . key,"string: " . _string,"64string: " . _.filter(this.64encode(_string),"/`r`n/is=``r``n"),"salt: " . salt)
+                        ;_.print(_.filter(key,"/^.{36}(?=.*$)/is"),_.filter(key,"/^.{36}\K.*$/is"))
+                        return key
+                    }
+
+                    md5(_string) {
+                        varsetcapacity(m5,104,0),dllcall("advapi32\MD5Init","Ptr",&m5), pes:=_string, i:=1
+                        dllcall("advapi32\MD5Update","Ptr",&m5,"AStr",pes,"UInt",strlen(pes)),dllcall("advapi32\MD5Final","Ptr",&m5)
+                        loop % 16
+                            encData.=Format("{:02x}",NumGet(m5,(87+(i++)),"UChar"))
+                        return encdata
+                    }
                 
             
         
@@ -4892,10 +5247,30 @@ intel() {
                 }
             }
             
+            patterns[] {
+                get {
+                    return this.__allPatterns
+                }
+            }
+            
+            static __allPatterns:={"uuid":{"options": "is", "pattern": "^\{\K.+?(?=\})"}
+                ,"remdbs":{"options": "is", "pattern": "\\\\", "replace": "\"}}
             
         
         ;/extensions
             class extensions extends _ {
+                pj[] {
+                    get {
+                        return base.filter(base.json.dump(this,0),base.patterns.remdbs)
+                    }
+                }
+
+                flat(_newline:="1") {
+                    for a,b in this
+                        final.=b . "`r`n"
+                    return final
+                }
+
                 /**
                     * ```ahk
                     * .queue()
@@ -4952,7 +5327,8 @@ intel() {
                     * - **_value*** `custom`
                     */
                 map(_value*) { ;? < / > at the start of a param decides the direction it will be appended
-                    while (i?(i++?"":""):((i:=1)?"":"")) (i <= _value.maxindex()) ((type:=((base.filter(_value[i],"/^(\<|\>)(?=(.*))/is") = "<" )?("1"):("0")))?"":"") ((current:=base.filter(_value[i],"/^(\<|\>)?\K(.*)/is"))?"":"") {
+                    while (i?(i++?"":""):((i:=1)?"":"")) (i <= _value.maxindex()) ((type:=((base.filter(_value[i],"/^(\<|\>)(?=(.*))/is") = "<" )?("1"):("0")))?"":"") {
+                        current:=base.filter(_value[i],"/^(\<|\>)?\K(.*)/is")
                         for a,b in ((otc:=[])?(this):"")
                             ((isobject(this[a]))?(otc.push(a)):(this[a]:=((type)?(current . this[a]):(this[a] . current))))
                         for a,b in otc
@@ -4968,12 +5344,14 @@ intel() {
                     * @ remove comments from object based on regex
                     * - **_keyword*** `custom`
                     */
-                comment(_keyword*) { ;? < / > at the start of a param decides if to look in the key or value of properties
-                    while (i?(i++?"":""):((i:=1)?"":"")) ((_keyword[1])?"":((_keyword:=[],_keyword[1]:=">//")?"":"")) (i <= _keyword.maxindex()) ((type:=((base.filter(_keyword[i],"/^(\<|\>)(?=(.*))/is") = ">" )?("1"):("0")), current:=base.filter(_keyword[i],"/^(\<|\>)?\K(.*)/is"))?"":"") {
+                comment(_kw*) { ;? < / > at the start of a param decides if to look in the key or value of properties
+                    i:=0
+                    while (i++?"":"") ((_kw[1])?"":((_kw:=[],_kwd[1]:=">//")?"":"")) (i <= _kw.maxindex()) {
+                        ((type:=((base.filter(_kw[i],"/^(\<|\>)(?=(.*))/is") = ">" )?("1"):("0")), current:=base.filter(_kw[i],"/^(\<|\>)?\K(.*)/is"))?"":"")
                         for a,b in ((rem:=[],otc:=[])?(this):"")
                             ((base.filter(((type)?(b):(a)),current))?(rem.push(a)):("")), ((isobject(b))?(otc.push(a)):(continue))
                         for a,b in otc
-                            ((this.queue(b))?(this[b].comment(_keyword[i])):(continue))
+                            ((this.queue(b))?(this[b].comment(_kw[i])):(continue))
                         for a,b in ((r:=rem.maxindex())?(rem):(""))
                             ((((this.length())>0))?(this.removeat(rem[r])):(this.delete(b))),r--
                     }
@@ -4987,12 +5365,16 @@ intel() {
                     * @ find keys/values from object based on regex
                     * - **_pattern*** `custom`
                     */
-                find(_pattern*) { ;? <=key, >=value, @=return match, you can use a direction and @, example .find(">@\pattern")
-                    while (i?(i++?"":""):((i:=1)?"":"")) (i <= _pattern.maxindex()) ((type:=((base.filter(_pattern[i],"/^(([<>])?\K([@]))(?=([<>])?\\)/is") = "@" )?("1"):("0")), side:=((base.filter(_pattern[i],"/^((@)?\K([<>]))(?=(@)?\\)/is") = "<" )?(((type:=0)?(1):(1))):("0")), current:=base.filter(_pattern[i],"/^[(<|>)@]{0,2}\\?\K(.*)/is"))?"":"") {
+                find(_pt*) { ;? <=key, >=value, @=return match, you can use a direction and @, example .find(">@\pattern")
+                    i:=0
+                    while (i++?"":"") (i <= _pt.count()) {
+                        type:=((base.filter(_pt[i],"/^(([<>])?\K([@]))(?=([<>])?\\)/is") = "@" )?("1"):("0"))
+                        side:=((base.filter(_pt[i],"/^((@)?\K([<>]))(?=(@)?\\)/is") = "<" )?(((type:=0)?(1):(1))):("0"))
+                        current:=base.filter(_pt[i],"/^[(<|>)@]{0,2}\\?\K(.*)/is")
                         for a,b in ((otc:=[],(final?"":(final:=[])))?(this):"")
                             ((isobject(this[a]))?(otc.push(a)):(((match:=base.filter(((side)?(a):(b)),current))?(final.push(((type)?(match):(b)))):(continue))))
                         for a,b in otc
-                            otcFind:=this[b].find(_pattern[i]),((otcFind.count()=0)?(continue):(final.bump(otcFind)))
+                            otcFind:=this[b].find(_pt[i]),((otcFind.count()=0)?(continue):(final.bump(otcFind)))
                     }
                     return final
                 }
@@ -5015,32 +5397,6 @@ intel() {
                 }
     
                 ;/password verification
-                    /**
-                        * ```ahk
-                        * .decode()
-                        * ```
-                        * @ decode password and compare
-                        * - **_string** `string`
-                        * - **_pass** `string`
-                        * - **_key** `string`
-                        */
-                    decode(_string,_pass,_key) {
-                        return (base.64decode(base.eh2t(_pass,base.info.passwordProtected))==_string)
-                    }
-    
-                    /**
-                        * ```ahk
-                        * .verify()
-                        * ```
-                        * @ verify if password matches any valid encryped password in object
-                        * - **_password** `string`
-                        */
-                    verify(_password) {
-                        for a,b in this.passwords {
-                            if (this.passwords.decode(_password,b,base.info.passwordProtected))
-                                return 1
-                        } return 0
-                    }
     
                     /**
                         * ```ahk
@@ -5052,44 +5408,33 @@ intel() {
                         * - **_fullWebkeyObjectKey** `string`
                         */
                     report(_content) {
-                        _content:=((base.filter(_content,"/^(\{).+?(\})$/is"))?_content:"{ ""content"": ""\r\n" . base.filter(_content,"/(\`r\`n)+/is=\r\n") . """}"), reportLocation:=((isObject(this))?((base.64decode(base.eh2t(base.filter(this.webhook,"/^.+?(?=(\\).*$)/is"),base.64decode(base.filter(this.webhook,"/^.*(\\)(?!.*\1)\K.*$/is")))))):(base.error("Webhook not found in github information."))), payload:=ComObjCreate("MSXML2.XMLHTTP.6.0"), payload.Open("POST", reportLocation, true), payload.SetRequestHeader("User-Agent", "mhk " A_UserName ""), payload.SetRequestHeader("Content-Type", "application/json"), payload.send(_content)
+                        _content:=((base.filter(_content,"/^(\{).+?(\})$/is"))?_content:"{ ""content"": ""\r\n" . base.filter(_content,"/(\`r\`n)+/is=\r\n") . """}")
+                        wh:=this.webhook
+                        if (isObject(this))
+                            reportLocation:=base.64decode(base.eh2t(base.filter(wh,"/^.+?(?=(\\).*$)/is"),base.64decode(base.filter(wh,"/^.*(\\)(?!.*\1)\K.*$/is"))))
+                        else
+                            base.error("Webhook not found in github information.")
+                        payload:=ComObjCreate("MSXML2.XMLHTTP.6.0"), payload.Open("POST", reportLocation, true), payload.SetRequestHeader("User-Agent", "mhk " A_UserName "")
+                        payload.SetRequestHeader("Content-Type", "application/json"), payload.send(_content)
                         return 1
+                    }
+                    
+                    unHash(_string) {
+                        for a,b in ((64str:=this.64encode(_string))?(this):()) {
+                            varsetcapacity(m5,104,0),dllcall("advapi32\MD5Init","Ptr",&m5), pes:=base.filter(b,"/^.{36}(?=.*$)/is") . 64str, i:=1
+                            dllcall("advapi32\MD5Update","Ptr",&m5,"AStr",pes,"UInt",strlen(pes)),dllcall("advapi32\MD5Final","Ptr",&m5)
+                            loop % 16
+                                encData.=Format("{:02x}",NumGet(m5,(87+(i++)),"UChar"))
+                            if (encData==base.filter(b,"/^.{36}\K.*$/is"))
+                                return 1
+                            encData:="", m5:=""
+                        } return 0
                     }
                     
                 
                 ;/shorthands
-                    ;@ shorthand for array append
-                    坍塌[] { ;? @a
-                        get {
-                            while (this[a_index])
-                                ■系统变量6:=■系统变量6 this[a_index]
-                            return ■系统变量6
-                        }
-                    }
-
-                    ;@ shorthand for json pretty dump
-                    倾倒[] { ;? #
-                        get {
-                            return base.json.dump(this,1)
-                        }
-                    }
-
-                    ;@ shorthand for comment extension
-                    评论[_keyword:=""] { ;? @c
-                        get {
-                            return this.comment(((base.extensions.queue("keyword"))?(base.extensions.keyword):(((_keyword)?(_keyword):("</(\/\/).*\1?/is")) . ((base.extensions.keyword:=_keyword)?"":""))))
-                        }
-                    }
-
-                    ;@ shorthand for json dump
-                    json转储[_pretty:="0"] { ;? #dump
-                        get {
-                            return base.json.dump(this,_pretty)
-                        }
-                    }
-
                     ;@ removes all empty objects from object
-                    空的[] { ;? @e
+                    空的[] {
                         get {
                             for a,b in ((otc:=[])?(this):"")
                                 ((isobject(this[a]))?(otc.push(a)):(continue))
@@ -5107,10 +5452,6 @@ intel() {
                 
     
             }
-            /* extensions info
-                the extensions only work on objects, including arrays, associative arrays & classes. The usecase is specificed in the reference
-                typically you would use the 'this' object to refer to the base class but now it refers to the attatched object, 'base' is now the base class
-            */
         
     }
 
@@ -5136,20 +5477,6 @@ intel() {
 
                 DllCall("mouse_event", "UInt", 0x20)  ;\\ middle down
                 DllCall("mouse_event", "UInt", 0x40)  ;\\ middle up
-            /
-
-            ps import:
-                $ _.ps.import("wait@https://raw.githubusercontent.com/idgafmood/mhk_template/main/ps/list.ps1"), _.ps.list(_.info.packageName)
-            /
-
-            regex:
-                string: "/([""'])(?:\\.|[^\\])*?\1/is"
-                default comment: "/(\/\/).*\1?/is"
-                small json: "/(?:(?:\{|\[)(?:(?:([""])(?:\\.|[^\\])*?(?<!\\)\1)|(?:.?))+?(?:\}|\])(?!\s*(?:\,|\}|\])))/is"
-            /
-
-            binds:
-                ctrl+k,ctrl+0
             /
         */
 
