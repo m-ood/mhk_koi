@@ -1,6 +1,6 @@
 //koi.as//
 {
-  "version":"53",
+  "version":"54",
   "source":"https://github.com/m-ood/mhk_koi/releases/download/%2B/koi_ahk.zip",
   "compiled":"https://github.com/m-ood/mhk_koi/releases/download/%2B/koi_exe.zip",
   "passwords": [
